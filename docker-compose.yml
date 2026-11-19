@@ -1,0 +1,53 @@
+# Uses prebuilt images published by .github/workflows/docker.yml
+# Required env: POSTGRES_PASSWORD, JWT_SECRET, ENCRYPTION_KEY (openssl rand -base64 32),
+#               BASE_URL (public API URL), FRONTEND_URL (public UI URL)
+
+services:
+  db:
+    image: ${HGITMAP_IMAGE:-ghcr.io/yipfram/hgitmap}-db:${HGITMAP_TAG:-latest}
+    environment:
+      POSTGRES_USER: hgitmap
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?}
+      POSTGRES_DB: hgitmap
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hgitmap -d hgitmap"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    image: ${HGITMAP_IMAGE:-ghcr.io/yipfram/hgitmap}-backend:${HGITMAP_TAG:-latest}
+    environment:
+      DATABASE_URL: postgres://hgitmap:${POSTGRES_PASSWORD:?}@db:5432/hgitmap
+      HOST: 0.0.0.0
+      PORT: 8080
+      JWT_SECRET: ${JWT_SECRET:?}
+      JWT_EXPIRATION_HOURS: 24
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-true}
+      BASE_URL: ${BASE_URL:?}
+      FRONTEND_URL: ${FRONTEND_URL:?}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?}
+      RUST_LOG: info
+    volumes:
+      - heatmaps:/app/static
+    ports:
+      - "8080:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  frontend:
+    image: ${HGITMAP_IMAGE:-ghcr.io/yipfram/hgitmap}-frontend:${HGITMAP_TAG:-latest}
+    environment:
+      VITE_API_URL: ${BASE_URL:?}
+    ports:
+      - "8081:80"
+    restart: unless-stopped
+
+volumes:
+  db-data:
+  heatmaps:
