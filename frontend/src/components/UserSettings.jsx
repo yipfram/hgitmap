@@ -8,7 +8,7 @@ export default function UserSettings() {
   const { error: showError, success: showSuccess } = useToast();
   const [settings, setSettings] = useState({
     show_private_contributions: true,
-    hide_private_repo_names: false,
+    hide_private_repo_names: true,
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -25,7 +25,7 @@ export default function UserSettings() {
       const data = await apiClient.getSettings();
       setSettings({
         show_private_contributions: data.show_private_contributions,
-        hide_private_repo_names: data.hide_private_repo_names,
+        hide_private_repo_names: data.hide_private_repo_names ?? true,
       });
     } catch (err) {
       showError(err.message || 'Failed to load settings');
