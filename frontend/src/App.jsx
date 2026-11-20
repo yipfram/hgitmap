@@ -56,8 +56,8 @@ function App() {
         <ToastProvider>
           <ApiClientSetup>
             <AuthProvider>
-              <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-                <div style={{ flex: 1 }}>
+              <div className="app-shell">
+                <div className="app-main">
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
