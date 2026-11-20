@@ -25,6 +25,22 @@ struct GitLabEvent {
     target_title: Option<String>,
     created_at: String,
     push_data: Option<GitLabPushData>,
+    project_id: Option<i64>,
+}
+
+/// Minimal project info used to resolve the visibility/name of an event's project.
+#[derive(Debug, Clone)]
+struct EventProject {
+    path_with_namespace: String,
+    web_url: String,
+    is_private: bool,
+}
+
+#[derive(Debug, Deserialize)]
+struct GitLabProjectInfo {
+    path_with_namespace: String,
+    visibility: String,
+    web_url: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -47,6 +63,57 @@ struct GitLabProject {
 impl GitLabClient {
     pub fn new() -> Self {
         Self
+    }
+
+    /// Resolve the project (name, URL, visibility) of each event once.
+    /// Fails closed: when a project cannot be looked up it is treated as private
+    /// and its name is not exposed.
+    async fn resolve_event_projects(
+        &self,
+        config: &PlatformConfig,
+        token: &str,
+        events: &[GitLabEvent],
+    ) -> HashMap<i64, EventProject> {
+        let client = create_http_client();
+        let mut projects: HashMap<i64, EventProject> = HashMap::new();
+
+        for project_id in events.iter().filter_map(|e| e.project_id) {
+            if projects.contains_key(&project_id) {
+                continue;
+            }
+
+            let info = match client
+                .get(&format!("{}/projects/{}", config.api_base_url, project_id))
+                .header("Authorization", format!("Bearer {}", token))
+                .header("accept", "application/json")
+                .send()
+                .await
+            {
+                Ok(resp) if resp.status().is_success() => {
+                    resp.json::<GitLabProjectInfo>().await.ok()
+                }
+                _ => None,
+            };
+
+            let project = match info {
+                Some(i) => EventProject {
+                    path_with_namespace: i.path_with_namespace,
+                    web_url: i.web_url,
+                    is_private: i.visibility != "public",
+                },
+                None => {
+                    log::warn!("Could not resolve GitLab project {}, treating it as private", project_id);
+                    EventProject {
+                        path_with_namespace: String::new(),
+                        web_url: String::new(),
+                        is_private: true,
+                    }
+                }
+            };
+            projects.insert(project_id, project);
+        }
+
+        projects
     }
 
     /// Revoke a GitLab OAuth token
@@ -240,8 +307,10 @@ impl GitPlatform for GitLabClient {
         // Fetch events
         let events = self.fetch_user_events(config, user_id, token, from, to).await?;
 
-        // Group contributions by date and repository
-        let mut contributions_map: HashMap<(NaiveDate, Option<String>), i32> = HashMap::new();
+        let event_projects = self.resolve_event_projects(config, token, &events).await;
+
+        // Group contributions by date and repository: (count, is_private)
+        let mut contributions_map: HashMap<(NaiveDate, Option<String>), (i32, bool)> = HashMap::new();
 
         for event in events {
             // Parse the created_at timestamp
@@ -264,11 +333,16 @@ impl GitPlatform for GitLabClient {
                 if let Some(push_data) = &event.push_data {
                     let count = push_data.commit_count;
 
-                    // Try to extract repository name from event
-                    let repo_name = event.target_title.clone();
+                    let project = event.project_id.and_then(|id| event_projects.get(&id));
+                    let is_private = project.map(|p| p.is_private).unwrap_or(true);
+                    let repo_name = project
+                        .filter(|p| !p.is_private && !p.path_with_namespace.is_empty())
+                        .map(|p| p.path_with_namespace.clone());
 
                     let key = (event_date, repo_name.clone());
-                    *contributions_map.entry(key).or_insert(0) += count;
+                    let entry = contributions_map.entry(key).or_insert((0, false));
+                    entry.0 += count;
+                    entry.1 |= is_private;
 
                     log::debug!("📊 Push event: {} commits on {} to {:?}", count, event_date, repo_name);
                 } else {
@@ -282,11 +356,11 @@ impl GitPlatform for GitLabClient {
         // Convert map to Vec<Contribution>
         let contributions: Vec<Contribution> = contributions_map
             .into_iter()
-            .map(|((date, repo_name), count)| Contribution {
+            .map(|((date, repo_name), (count, is_private))| Contribution {
                 date,
                 count,
                 repository_name: repo_name,
-                is_private: false, // GitLab events API doesn't easily expose visibility
+                is_private,
                 contribution_type: ContributionType::Commit,
             })
             .collect();
@@ -379,9 +453,20 @@ impl GitPlatform for GitLabClient {
         // Fetch events
         let events = self.fetch_user_events(config, user_id, token, from, to).await?;
 
+        let event_projects = self.resolve_event_projects(config, token, &events).await;
+
         let mut activities = Vec::new();
 
         for event in events {
+            let project = event.project_id.and_then(|id| event_projects.get(&id));
+            let event_is_private = project.map(|p| p.is_private).unwrap_or(true);
+            let event_repo_name = project
+                .filter(|p| !p.path_with_namespace.is_empty())
+                .map(|p| p.path_with_namespace.clone());
+            let event_repo_url = project
+                .filter(|p| !p.web_url.is_empty())
+                .map(|p| p.web_url.clone());
+
             let event_date = match DateTime::parse_from_rfc3339(&event.created_at) {
                 Ok(dt) => dt.with_timezone(&Utc).date_naive(),
                 Err(e) => {
@@ -408,9 +493,9 @@ impl GitPlatform for GitLabClient {
                                 "ref": push_data.ref_name,
                                 "ref_type": push_data.ref_type,
                             }),
-                            repository_name: event.target_title.clone(),
-                            repository_url: None, // Would need additional API call
-                            is_private: false,
+                            repository_name: event_repo_name.clone(),
+                            repository_url: event_repo_url.clone(),
+                            is_private: event_is_private,
                             count: push_data.commit_count,
                             primary_language: None,
                             organization_name: None,
@@ -441,9 +526,9 @@ impl GitPlatform for GitLabClient {
                         "type": event.target_type,
                         "action": event.action_name,
                     }),
-                    repository_name: event.target_title.clone(),
-                    repository_url: None,
-                    is_private: false,
+                    repository_name: event_repo_name.clone(),
+                    repository_url: event_repo_url.clone(),
+                    is_private: event_is_private,
                     count: 1,
                     primary_language: None,
                     organization_name: None,
