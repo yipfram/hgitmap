@@ -28,9 +28,9 @@
 }
 
 .error-message {
-  background: #fee;
-  border: 1px solid #fcc;
-  color: #c33;
+  background: var(--status-danger-bg);
+  border: 1px solid var(--status-danger-fg);
+  color: var(--status-danger-fg);
   padding: 1rem;
   border-radius: 8px;
   margin-bottom: 1rem;
@@ -98,8 +98,8 @@
 }
 
 .theme-mode-badge.light {
-  background: #fff3cd;
-  color: #856404;
+  background: var(--status-warning-bg);
+  color: var(--status-warning-fg);
 }
 
 .theme-mode-badge.dark {

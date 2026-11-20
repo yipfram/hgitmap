@@ -43,24 +43,24 @@
 }
 
 .status-completed {
-    background: #d4edda;
-    color: #155724;
+    background: var(--status-success-bg);
+    color: var(--status-success-fg);
 }
 
 .status-processing {
-    background: #d1ecf1;
-    color: #0c5460;
+    background: var(--status-info-bg);
+    color: var(--status-info-fg);
     animation: pulse 2s ease-in-out infinite;
 }
 
 .status-failed {
-    background: #f8d7da;
-    color: #721c24;
+    background: var(--status-danger-bg);
+    color: var(--status-danger-fg);
 }
 
 .status-pending {
-    background: #fff3cd;
-    color: #856404;
+    background: var(--status-warning-bg);
+    color: var(--status-warning-fg);
 }
 
 .job-time {
@@ -178,10 +178,10 @@
 
 .job-error {
     font-size: 0.75rem;
-    color: #721c24;
+    color: var(--status-danger-fg);
     margin-top: 0.25rem;
     padding: 0.5rem;
-    background: #f8d7da;
+    background: var(--status-danger-bg);
     border-radius: 4px;
 }
 

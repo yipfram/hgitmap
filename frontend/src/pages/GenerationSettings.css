@@ -17,9 +17,9 @@
 }
 
 .success-message {
-  background: #d4edda;
-  border: 1px solid #c3e6cb;
-  color: #155724;
+  background: var(--status-success-bg);
+  border: 1px solid var(--status-success-fg);
+  color: var(--status-success-fg);
   padding: 1rem;
   border-radius: 8px;
   margin-bottom: 1rem;
@@ -180,28 +180,28 @@
 }
 
 .status-completed {
-  background: #d4edda;
-  color: #155724;
+  background: var(--status-success-bg);
+  color: var(--status-success-fg);
 }
 
 .status-processing {
-  background: #d1ecf1;
-  color: #0c5460;
+  background: var(--status-info-bg);
+  color: var(--status-info-fg);
 }
 
 .status-failed {
-  background: #f8d7da;
-  color: #721c24;
+  background: var(--status-danger-bg);
+  color: var(--status-danger-fg);
 }
 
 .status-pending {
-  background: #fff3cd;
-  color: #856404;
+  background: var(--status-warning-bg);
+  color: var(--status-warning-fg);
 }
 
 .badge-manual {
-  background: #e7f3ff;
-  color: #004085;
+  background: var(--status-info-bg);
+  color: var(--status-info-fg);
   padding: 0.2rem 0.6rem;
   border-radius: 10px;
   font-size: 0.8rem;
@@ -209,8 +209,8 @@
 }
 
 .badge-auto {
-  background: #f0f0f0;
-  color: #666;
+  background: var(--status-neutral-bg);
+  color: var(--status-neutral-fg);
   padding: 0.2rem 0.6rem;
   border-radius: 10px;
   font-size: 0.8rem;

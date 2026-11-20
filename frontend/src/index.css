@@ -64,6 +64,39 @@
   --color-level-2: #40c463;
   --color-level-3: #30a14e;
   --color-level-4: #216e39;
+
+  /* Aliases used by components (resolve per theme since data-theme is on <html>) */
+  --primary-color: var(--accent-primary);
+  --primary-hover: var(--accent-hover);
+  --background: var(--bg-primary);
+  --background-secondary: var(--bg-secondary);
+  --card-bg: var(--bg-primary);
+  --input-bg: var(--bg-primary);
+  --bg-hover: var(--bg-tertiary);
+  --bg-tertiary-hover: var(--bg-tertiary);
+  --border-hover: var(--border-emphasis);
+  --border-dark: var(--border-emphasis);
+  --color-fg-default: var(--text-primary);
+  --color-fg-muted: var(--text-secondary);
+  --color-border-default: var(--border-color);
+  --color-border-muted: var(--border-muted);
+  --color-canvas-default: var(--bg-primary);
+  --color-canvas-subtle: var(--bg-secondary);
+  --color-accent-emphasis: var(--accent-emphasis);
+  --color-accent-fg: var(--accent-primary);
+  --success-text: var(--success-fg);
+  --success-bg: var(--success-muted);
+  --success-border: var(--success-emphasis);
+  --error-text: var(--danger-fg);
+  --error-bg: var(--danger-muted);
+  --error-border: var(--danger-emphasis);
+
+  /* Status badges */
+  --status-success-bg: #d4edda; --status-success-fg: #155724;
+  --status-info-bg: #d1ecf1;    --status-info-fg: #0c5460;
+  --status-danger-bg: #f8d7da;  --status-danger-fg: #721c24;
+  --status-warning-bg: #fff3cd; --status-warning-fg: #856404;
+  --status-neutral-bg: #f0f0f0; --status-neutral-fg: #666666;
 }
 
 [data-theme='dark'] {
@@ -132,6 +165,12 @@
   --color-level-2: #006d32;
   --color-level-3: #26a641;
   --color-level-4: #39d353;
+
+  --status-success-bg: #2ea04326; --status-success-fg: #3fb950;
+  --status-info-bg: #1f6feb26;    --status-info-fg: #58a6ff;
+  --status-danger-bg: #da363326;  --status-danger-fg: #f85149;
+  --status-warning-bg: #bf870026; --status-warning-fg: #d29922;
+  --status-neutral-bg: #30363d;   --status-neutral-fg: #8b949e;
 }
 
 * {
