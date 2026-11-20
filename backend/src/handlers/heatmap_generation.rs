@@ -43,11 +43,25 @@ impl From<heatmap_generation_setting::Model> for GenerationSettingsResponse {
     }
 }
 
+/// Distinguishes an absent field (`None`) from an explicit `null` (`Some(None)`)
+fn deserialize_explicit_null<'de, D>(d: D) -> Result<Option<Option<i32>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    Option::<i32>::deserialize(d).map(Some)
+}
+
+/// Allowed range for the heatmap date range, in days (shared with the frontend forms)
+const MIN_DATE_RANGE_DAYS: i32 = 30;
+const MAX_DATE_RANGE_DAYS: i32 = 730;
+
 #[derive(Debug, Deserialize)]
 pub struct UpdateGenerationSettingsRequest {
-    pub update_interval_minutes: Option<i32>,
+    #[serde(default, deserialize_with = "deserialize_explicit_null")]
+    pub update_interval_minutes: Option<Option<i32>>,
     pub auto_generation_enabled: Option<bool>,
-    pub date_range_days: Option<i32>,
+    #[serde(default, deserialize_with = "deserialize_explicit_null")]
+    pub date_range_days: Option<Option<i32>>,
     pub include_private_contributions: Option<bool>,
     pub storage_path: Option<String>,
 }
@@ -188,7 +202,27 @@ pub async fn update_generation_settings(
         .map_err(|e| actix_web::error::ErrorBadRequest(format!("Invalid user ID: {}", e)))?;
 
     // Validate update_interval_minutes if provided
-    if let Some(interval) = payload.update_interval_minutes {
+    let update_interval = match payload.update_interval_minutes {
+        Some(None) => {
+            return Err(actix_web::error::ErrorBadRequest(
+                "Update interval must be a number between 15 and 1440 minutes",
+            ))
+        }
+        Some(Some(v)) => Some(v),
+        None => None,
+    };
+    let date_range_days = match payload.date_range_days {
+        Some(None) => {
+            return Err(actix_web::error::ErrorBadRequest(format!(
+                "Date range must be a number between {} and {} days",
+                MIN_DATE_RANGE_DAYS, MAX_DATE_RANGE_DAYS
+            )))
+        }
+        Some(Some(v)) => Some(v),
+        None => None,
+    };
+
+    if let Some(interval) = update_interval {
         if interval < 15 || interval > 1440 {
             return Err(actix_web::error::ErrorBadRequest(
                 "Update interval must be between 15 and 1440 minutes",
@@ -197,11 +231,12 @@ pub async fn update_generation_settings(
     }
 
     // Validate date_range_days if provided
-    if let Some(days) = payload.date_range_days {
-        if days < 1 || days > 730 {
-            return Err(actix_web::error::ErrorBadRequest(
-                "Date range must be between 1 and 730 days",
-            ));
+    if let Some(days) = date_range_days {
+        if !(MIN_DATE_RANGE_DAYS..=MAX_DATE_RANGE_DAYS).contains(&days) {
+            return Err(actix_web::error::ErrorBadRequest(format!(
+                "Date range must be between {} and {} days",
+                MIN_DATE_RANGE_DAYS, MAX_DATE_RANGE_DAYS
+            )));
         }
     }
 
@@ -244,7 +279,7 @@ pub async fn update_generation_settings(
         Some(settings) => {
             let mut active_settings: heatmap_generation_setting::ActiveModel = settings.into();
 
-            if let Some(interval) = payload.update_interval_minutes {
+            if let Some(interval) = update_interval {
                 active_settings.update_interval_minutes = Set(interval);
             }
 
@@ -252,7 +287,7 @@ pub async fn update_generation_settings(
                 active_settings.auto_generation_enabled = Set(enabled);
             }
 
-            if let Some(days) = payload.date_range_days {
+            if let Some(days) = date_range_days {
                 active_settings.date_range_days = Set(days);
             }
 
@@ -276,9 +311,9 @@ pub async fn update_generation_settings(
             let new_settings = heatmap_generation_setting::ActiveModel {
                 id: Set(Uuid::new_v4()),
                 user_id: Set(user_id),
-                update_interval_minutes: Set(payload.update_interval_minutes.unwrap_or(60)),
+                update_interval_minutes: Set(update_interval.unwrap_or(60)),
                 auto_generation_enabled: Set(payload.auto_generation_enabled.unwrap_or(false)),
-                date_range_days: Set(payload.date_range_days.unwrap_or(365)),
+                date_range_days: Set(date_range_days.unwrap_or(365)),
                 include_private_contributions: Set(payload
                     .include_private_contributions
                     .unwrap_or(true)),
