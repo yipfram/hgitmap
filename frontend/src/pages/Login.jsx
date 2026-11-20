@@ -46,10 +46,14 @@ const Login = () => {
         {authConfig.oidc_enabled && (
           <button
             type="button"
+            className="sso-button"
             onClick={() => { window.location.href = apiClient.oidcLoginUrl(); }}
           >
             Continue with {authConfig.oidc_name}
           </button>
+        )}
+        {authConfig.oidc_enabled && authConfig.password_login && (
+          <div className="auth-divider">or</div>
         )}
         {authConfig.password_login && (
         <form onSubmit={handleSubmit}>
