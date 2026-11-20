@@ -120,7 +120,9 @@ export default function UserSettings() {
               <div className="setting-info">
                 <label className="setting-label">Show Private Contributions</label>
                 <p className="setting-description">
-                  Include contributions from private repositories in your heatmap
+                  Include contributions from private repositories in your heatmap. This is the
+                  global setting; the per-feature options in Generation and Sync can only
+                  narrow it down, never show more than what is allowed here.
                 </p>
               </div>
               <div className="setting-control">
@@ -143,6 +145,11 @@ export default function UserSettings() {
                 <p className="setting-description">
                   Show contribution counts from private repos but hide repository names
                 </p>
+                {!settings.show_private_contributions && (
+                  <p className="setting-hint" id="hide-names-hint">
+                    Unavailable while &quot;Show Private Contributions&quot; is off.
+                  </p>
+                )}
                 {showRequirementWarning && (
                   <p className="setting-requirement">
                     ⚠️ Please enable "Show Private Contributions" first to use this option
@@ -159,6 +166,7 @@ export default function UserSettings() {
                     checked={settings.hide_private_repo_names}
                     onChange={(e) => handleChange('hide_private_repo_names', e.target.checked)}
                     disabled={!settings.show_private_contributions}
+                    aria-describedby={!settings.show_private_contributions ? 'hide-names-hint' : undefined}
                   />
                   <span className="toggle-slider"></span>
                 </label>

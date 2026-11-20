@@ -145,6 +145,18 @@
   transform: translateX(24px);
 }
 
+.toggle-switch input:focus-visible + .toggle-slider {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.setting-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
 .toggle-switch input:disabled + .toggle-slider {
   opacity: 0.5;
   cursor: pointer; /* Keep cursor as pointer to indicate it's clickable for info */
