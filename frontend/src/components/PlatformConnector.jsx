@@ -53,24 +53,24 @@ function PlatformConnector() {
       try {
         const githubInstances = await apiClient.listOAuthInstances('github');
         setAvailableOAuthApps(prev => ({ ...prev, github: githubInstances.length > 0 }));
-      } catch (err) {
-        console.log('GitHub OAuth not configured');
+      } catch {
+        // OAuth not configured for this platform
       }
 
       // Check GitLab OAuth
       try {
         const gitlabInstances = await apiClient.listOAuthInstances('gitlab');
         setAvailableOAuthApps(prev => ({ ...prev, gitlab: gitlabInstances.length > 0 }));
-      } catch (err) {
-        console.log('GitLab OAuth not configured');
+      } catch {
+        // OAuth not configured for this platform
       }
 
       // Check Gitea OAuth
       try {
         const giteaInstances = await apiClient.listOAuthInstances('gitea');
         setAvailableOAuthApps(prev => ({ ...prev, gitea: giteaInstances.length > 0 }));
-      } catch (err) {
-        console.log('Gitea OAuth not configured');
+      } catch {
+        // OAuth not configured for this platform
       }
     } catch (err) {
       console.error('Failed to load OAuth apps:', err);
@@ -95,12 +95,9 @@ function PlatformConnector() {
   };
 
   const handleConnectOAuth = async () => {
-    console.log('🔐 [OAuth] Starting OAuth flow');
-
     try {
       // Get OAuth authorization URL from backend (includes state token)
       const authUrl = await apiClient.startGithubOAuth();
-      console.log(`🚀 [OAuth] Redirecting to: ${authUrl}`);
       window.location.href = authUrl;
     } catch (err) {
       console.error('❌ [OAuth] Failed to start OAuth flow:', err);
@@ -109,8 +106,6 @@ function PlatformConnector() {
   };
 
   const handleConnectGiteaOAuth = async () => {
-    console.log('🔐 [Gitea OAuth] Starting OAuth flow');
-
     if (!giteaOAuthInstanceUrl) {
       setGiteaOAuthError('Please select a Gitea instance');
       return;
@@ -120,7 +115,6 @@ function PlatformConnector() {
       setGiteaOAuthError(null);
       // Get OAuth authorization URL from backend (includes state token)
       const authUrl = await apiClient.startGiteaOAuth(giteaOAuthInstanceUrl);
-      console.log(`🚀 [Gitea OAuth] Redirecting to: ${authUrl}`);
       window.location.href = authUrl;
     } catch (err) {
       console.error('❌ [Gitea OAuth] Failed to start OAuth flow:', err);
@@ -136,21 +130,14 @@ function PlatformConnector() {
     try {
       // Fetch available Gitea OAuth instances
       const instances = await apiClient.listOAuthInstances('gitea');
-      console.log('📋 Available Gitea instances:', instances);
 
       if (instances.length === 0) {
-        setGiteaOAuthError('No Gitea OAuth apps configured. Please ask your administrator to configure a Gitea OAuth app in the admin panel.');
         setGiteaInstances([]);
       } else {
         setGiteaInstances(instances);
         // Auto-select the default instance or first instance
         const defaultInstance = instances.find(i => i.is_default) || instances[0];
         setGiteaOAuthInstanceUrl(defaultInstance.instance_url);
-
-        // If only one instance, we can show a simpler UI
-        if (instances.length === 1) {
-          console.log(`✅ Auto-selected single Gitea instance: ${defaultInstance.instance_name}`);
-        }
       }
     } catch (err) {
       console.error('❌ Failed to fetch Gitea instances:', err);
@@ -169,21 +156,14 @@ function PlatformConnector() {
     try {
       // Fetch available GitLab OAuth instances
       const instances = await apiClient.listOAuthInstances('gitlab');
-      console.log('📋 Available GitLab instances:', instances);
 
       if (instances.length === 0) {
-        setGitlabOAuthError('No GitLab OAuth apps configured. Please ask your administrator to configure a GitLab OAuth app in the admin panel.');
         setGitlabInstances([]);
       } else {
         setGitlabInstances(instances);
         // Auto-select the default instance or first instance
         const defaultInstance = instances.find(i => i.is_default) || instances[0];
         setGitlabOAuthInstanceUrl(defaultInstance.instance_url);
-
-        // If only one instance, we can show a simpler UI
-        if (instances.length === 1) {
-          console.log(`✅ Auto-selected single GitLab instance: ${defaultInstance.instance_name}`);
-        }
       }
     } catch (err) {
       console.error('❌ Failed to fetch GitLab instances:', err);
@@ -195,8 +175,6 @@ function PlatformConnector() {
   };
 
   const handleConnectGitlabOAuth = async () => {
-    console.log('🔐 [GitLab OAuth] Starting OAuth flow');
-
     if (!gitlabOAuthInstanceUrl) {
       setGitlabOAuthError('Please select a GitLab instance');
       return;
@@ -205,7 +183,6 @@ function PlatformConnector() {
     try {
       setGitlabOAuthError(null);
       const authUrl = await apiClient.startGitlabOAuth(gitlabOAuthInstanceUrl);
-      console.log(`🚀 [GitLab OAuth] Redirecting to: ${authUrl}`);
       window.location.href = authUrl;
     } catch (err) {
       console.error('❌ [GitLab OAuth] Failed to start OAuth flow:', err);
@@ -557,9 +534,11 @@ function PlatformConnector() {
             ) : gitlabInstances.length === 0 ? (
               <>
                 {gitlabOAuthError && <div className="error-message">{gitlabOAuthError}</div>}
+                {!gitlabOAuthError && (
                 <p className="form-hint">
                   No GitLab OAuth applications are configured. Please ask your administrator to add a GitLab OAuth app in the <Link to="/settings/platforms?tab=oauth-apps">OAuth Apps tab</Link>.
                 </p>
+                )}
               </>
             ) : (
               <>
@@ -627,9 +606,11 @@ function PlatformConnector() {
             ) : giteaInstances.length === 0 ? (
               <>
                 {giteaOAuthError && <div className="error-message">{giteaOAuthError}</div>}
+                {!giteaOAuthError && (
                 <p className="form-hint">
                   No Gitea OAuth applications are configured. Please ask your administrator to add a Gitea OAuth app in the <Link to="/settings/platforms?tab=oauth-apps">OAuth Apps tab</Link>.
                 </p>
+                )}
               </>
             ) : (
               <>
