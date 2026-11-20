@@ -1,7 +1,10 @@
 import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import apiClient from '../api/client';
 import PlatformIcon from './PlatformIcon';
 import './PlatformConnector.css';
+
+const PLATFORM_NAMES = { github: 'GitHub', gitlab: 'GitLab', gitea: 'Gitea' };
 
 function PlatformConnector() {
   const [platforms, setPlatforms] = useState([]);
@@ -430,7 +433,7 @@ function PlatformConnector() {
                       disabled={syncingPlatformId === platform.id}
                     >
                       <option value="current">Current year ({new Date().getFullYear()})</option>
-                      {Array.from({ length: new Date().getFullYear() - 2019 }, (_, i) => {
+                      {Array.from({ length: Math.max(0, new Date().getFullYear() - 2020) }, (_, i) => {
                         const year = new Date().getFullYear() - 1 - i;
                         return <option key={year} value={year}>{year}</option>;
                       })}
@@ -555,7 +558,7 @@ function PlatformConnector() {
               <>
                 {gitlabOAuthError && <div className="error-message">{gitlabOAuthError}</div>}
                 <p className="form-hint">
-                  No GitLab OAuth applications are configured. Please ask your administrator to add a GitLab OAuth app in the admin panel at <code>/admin/oauth-apps</code>.
+                  No GitLab OAuth applications are configured. Please ask your administrator to add a GitLab OAuth app in the <Link to="/settings/platforms?tab=oauth-apps">OAuth Apps tab</Link>.
                 </p>
               </>
             ) : (
@@ -625,7 +628,7 @@ function PlatformConnector() {
               <>
                 {giteaOAuthError && <div className="error-message">{giteaOAuthError}</div>}
                 <p className="form-hint">
-                  No Gitea OAuth applications are configured. Please ask your administrator to add a Gitea OAuth app in the admin panel at <code>/admin/oauth-apps</code>.
+                  No Gitea OAuth applications are configured. Please ask your administrator to add a Gitea OAuth app in the <Link to="/settings/platforms?tab=oauth-apps">OAuth Apps tab</Link>.
                 </p>
               </>
             ) : (
@@ -687,7 +690,7 @@ function PlatformConnector() {
           </div>
         ) : (
           <form onSubmit={handleConnectPAT} className="pat-form">
-            <h4>Connect {selectedPlatform.charAt(0).toUpperCase() + selectedPlatform.slice(1)} with Personal Access Token</h4>
+            <h4>Connect {PLATFORM_NAMES[selectedPlatform] || selectedPlatform} with Personal Access Token</h4>
 
             {(selectedPlatform === 'gitea' || selectedPlatform === 'gitlab') && (
               <div className="instance-url-input">
@@ -744,7 +747,9 @@ function PlatformConnector() {
 
             {patError && <div className="error-message">{patError}</div>}
 
+            <label htmlFor="pat-token" className="sr-only">Personal Access Token</label>
             <input
+              id="pat-token"
               type="password"
               value={patToken}
               onChange={(e) => setPatToken(e.target.value)}
@@ -788,7 +793,7 @@ function PlatformConnector() {
             <h3>Update Access Token</h3>
             <p className="modal-description">
               Update the Personal Access Token for <strong>{editingPlatform.platform_username}</strong> on{' '}
-              <strong>{editingPlatform.platform.charAt(0).toUpperCase() + editingPlatform.platform.slice(1)}</strong>
+              <strong>{PLATFORM_NAMES[editingPlatform.platform] || editingPlatform.platform}</strong>
               {editingPlatform.platform_url && (
                 <span className="modal-instance-url"> ({editingPlatform.platform_url})</span>
               )}
