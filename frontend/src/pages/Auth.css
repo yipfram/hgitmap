@@ -44,11 +44,11 @@
   letter-spacing: -0.015em;
 }
 
-.form-group {
+.auth-box .form-group {
   margin-bottom: 16px;
 }
 
-.form-group label {
+.auth-box .form-group label {
   display: block;
   margin-bottom: 4px;
   color: var(--text-primary);
@@ -58,7 +58,7 @@
   height: 21px;
 }
 
-.form-group input {
+.auth-box .form-group input {
   width: 100%;
   padding: 9px 12px;
   border: 1px solid var(--border-color);
@@ -73,13 +73,13 @@
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
 }
 
-.form-group input:focus {
+.auth-box .form-group input:focus {
   outline: none;
   border-color: var(--accent-primary);
   box-shadow: 0 0 0 3px var(--accent-subtle);
 }
 
-.form-group input:disabled {
+.auth-box .form-group input:disabled {
   background-color: var(--bg-secondary);
   color: var(--text-secondary);
   cursor: not-allowed;
