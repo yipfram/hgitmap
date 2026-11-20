@@ -169,6 +169,20 @@ pub async fn create_oauth_app(
             error: "Instance URL is required for GitLab and Gitea".to_string(),
         }));
     }
+    if !instance_url.is_empty() {
+        if let Err(e) = crate::utils::validators::validate_url(&instance_url) {
+            return Ok(HttpResponse::BadRequest().json(ErrorResponse {
+                error: format!("Invalid instance URL (must be an http or https URL): {}", e),
+            }));
+        }
+    }
+    let client_id = payload.client_id.trim().to_string();
+    let client_secret = payload.client_secret.trim().to_string();
+    if client_id.is_empty() || client_secret.is_empty() {
+        return Ok(HttpResponse::BadRequest().json(ErrorResponse {
+            error: "Client ID and client secret cannot be empty".to_string(),
+        }));
+    }
     if payload.instance_name.trim().is_empty() {
         return Ok(HttpResponse::BadRequest().json(ErrorResponse {
             error: "Instance name cannot be empty".to_string(),
@@ -197,7 +211,7 @@ pub async fn create_oauth_app(
 
     // Encrypt the client secret
     log::info!("🔒 Encrypting client secret");
-    let encrypted_secret = encryption::encrypt(&payload.client_secret, &config.encryption_key)
+    let encrypted_secret = encryption::encrypt(&client_secret, &config.encryption_key)
         .map_err(|e| {
             log::error!("Failed to encrypt secret: {}", e);
             actix_web::error::ErrorInternalServerError("Encryption failed")
@@ -226,7 +240,7 @@ pub async fn create_oauth_app(
         platform: Set(platform),
         instance_url: Set(instance_url),
         instance_name: Set(payload.instance_name.trim().to_string()),
-        client_id: Set(payload.client_id.clone()),
+        client_id: Set(client_id.clone()),
         client_secret: Set(encrypted_secret),
         is_enabled: Set(true),
         is_default: Set(payload.is_default.unwrap_or(false)),
@@ -257,7 +271,7 @@ pub async fn create_oauth_app(
         instance_url: app.instance_url,
         instance_name: app.instance_name,
         client_id: app.client_id,
-        client_secret_preview: mask_secret(&payload.client_secret),
+        client_secret_preview: mask_secret(&client_secret),
         is_enabled: app.is_enabled,
         is_default: app.is_default,
         created_at: app.created_at.to_rfc3339(),
@@ -303,11 +317,18 @@ pub async fn update_oauth_app(
         app.instance_name = Set(instance_name.trim().to_string());
     }
 
-    if let Some(client_id) = &payload.client_id {
-        app.client_id = Set(client_id.clone());
+    // Omitted values keep the existing client id / secret; a blank client id is rejected
+    if let Some(client_id) = payload.client_id.as_deref() {
+        let client_id = client_id.trim();
+        if client_id.is_empty() {
+            return Ok(HttpResponse::BadRequest().json(ErrorResponse {
+                error: "Client ID cannot be empty".to_string(),
+            }));
+        }
+        app.client_id = Set(client_id.to_string());
     }
 
-    if let Some(client_secret) = &payload.client_secret {
+    if let Some(client_secret) = payload.client_secret.as_deref().map(str::trim).filter(|v| !v.is_empty()) {
         let encrypted_secret = encryption::encrypt(client_secret, &config.encryption_key)
             .map_err(|e| {
                 log::error!("Failed to encrypt secret: {}", e);
@@ -383,13 +404,17 @@ pub async fn delete_oauth_app(
         actix_web::error::ErrorBadRequest(format!("Invalid app ID: {}", e))
     })?;
 
-    oauth_application::Entity::delete_by_id(app_id)
+    let result = oauth_application::Entity::delete_by_id(app_id)
         .exec(db.as_ref())
         .await
         .map_err(|e| {
             log::error!("Failed to delete OAuth app: {}", e);
             actix_web::error::ErrorInternalServerError("Failed to delete OAuth app")
         })?;
+
+    if result.rows_affected == 0 {
+        return Err(actix_web::error::ErrorNotFound("OAuth app not found"));
+    }
 
     Ok(HttpResponse::Ok().json(serde_json::json!({
         "message": "OAuth application deleted successfully"
