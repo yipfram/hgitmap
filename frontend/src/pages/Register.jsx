@@ -56,18 +56,20 @@ const Register = () => {
         <ThemeToggle />
       </div>
       <div className="auth-box">
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+        <Link to="/" aria-label="Hgitmap home" style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
           <HeatmapLogo size={48} />
-        </div>
+        </Link>
         <h1>Register for hgitmap</h1>
         <form onSubmit={handleSubmit}>
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="error-message" role="alert">{error}</div>}
 
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
               type="text"
               id="username"
+              name="username"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -80,6 +82,8 @@ const Register = () => {
             <input
               type="password"
               id="password"
+              name="password"
+              autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
@@ -92,6 +96,8 @@ const Register = () => {
             <input
               type="password"
               id="confirmPassword"
+              name="confirmPassword"
+              autoComplete="new-password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required

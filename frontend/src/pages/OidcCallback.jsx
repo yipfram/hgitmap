@@ -33,7 +33,7 @@ function OidcCallback() {
     return (
       <div className="auth-container">
         <div className="auth-box">
-          <div className="error-message">{error}</div>
+          <div className="error-message" role="alert">{error}</div>
           <div className="auth-footer"><a href="/login">Back to login</a></div>
         </div>
       </div>

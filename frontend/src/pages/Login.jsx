@@ -47,11 +47,11 @@ const Login = () => {
         <ThemeToggle />
       </div>
       <div className="auth-box">
-        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
+        <Link to="/" aria-label="Hgitmap home" style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
           <HeatmapLogo size={48} />
-        </div>
+        </Link>
         <h1>Login to Hgitmap</h1>
-        {!authConfig.password_login && error && <div className="error-message">{error}</div>}
+        {!authConfig.password_login && error && <div className="error-message" role="alert">{error}</div>}
         {authConfig.oidc_enabled && (
           <button
             type="button"
@@ -66,13 +66,15 @@ const Login = () => {
         )}
         {authConfig.password_login && (
         <form onSubmit={handleSubmit}>
-          {error && <div className="error-message">{error}</div>}
+          {error && <div className="error-message" role="alert">{error}</div>}
 
           <div className="form-group">
             <label htmlFor="username">Username</label>
             <input
               type="text"
               id="username"
+              name="username"
+              autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required
@@ -85,6 +87,8 @@ const Login = () => {
             <input
               type="password"
               id="password"
+              name="password"
+              autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
