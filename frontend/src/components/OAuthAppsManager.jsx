@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useToast } from '../context/ToastContext';
 import apiClient from '../api/client';
 import PlatformIcon from './PlatformIcon';
+import ConfirmDialog from './ConfirmDialog';
 import { FiEdit, FiTrash2, FiArrowLeft } from 'react-icons/fi';
 import './OAuthAppsManager.css';
 
@@ -13,6 +14,7 @@ export default function OAuthAppsManager() {
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingApp, setEditingApp] = useState(null);
+  const [dialog, setDialog] = useState(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -63,13 +65,34 @@ export default function OAuthAppsManager() {
       return;
     }
 
+    if (!editingApp && formData.platform !== 'github') {
+      let parsed = null;
+      try {
+        parsed = new URL(instanceUrl);
+      } catch {
+        parsed = null;
+      }
+      if (!parsed || !['http:', 'https:'].includes(parsed.protocol) || !parsed.hostname) {
+        showError('Instance URL must be a valid http or https URL');
+        return;
+      }
+    }
+    if (!editingApp && (!formData.clientId.trim() || !formData.clientSecret.trim())) {
+      showError('Client ID and client secret cannot be empty');
+      return;
+    }
+    if (editingApp && formData.clientId && !formData.clientId.trim()) {
+      showError('Client ID cannot be empty');
+      return;
+    }
+
     try {
       if (editingApp) {
         // Update existing app
         const updates = {};
         updates.instance_name = instanceName;
-        if (formData.clientId) updates.client_id = formData.clientId;
-        if (formData.clientSecret) updates.client_secret = formData.clientSecret;
+        if (formData.clientId) updates.client_id = formData.clientId.trim();
+        if (formData.clientSecret.trim()) updates.client_secret = formData.clientSecret.trim();
         if (formData.isDefault !== undefined) updates.is_default = formData.isDefault;
 
         await apiClient.updateOAuthApp(editingApp.id, updates);
@@ -80,8 +103,8 @@ export default function OAuthAppsManager() {
           formData.platform,
           instanceName,
           formData.platform === 'github' ? '' : instanceUrl,
-          formData.clientId,
-          formData.clientSecret,
+          formData.clientId.trim(),
+          formData.clientSecret.trim(),
           formData.isDefault
         );
         showSuccess('OAuth app created successfully!');
@@ -108,18 +131,23 @@ export default function OAuthAppsManager() {
     setShowForm(true);
   };
 
-  const handleDelete = async (appId) => {
-    if (!confirm('Are you sure you want to delete this OAuth app? Users will no longer be able to use it.')) {
-      return;
-    }
-
-    try {
-      await apiClient.deleteOAuthApp(appId);
-      showSuccess('OAuth app deleted successfully!');
-      loadApps();
-    } catch (err) {
-      showError(err.message || 'Failed to delete OAuth app');
-    }
+  const handleDelete = (app) => {
+    setDialog({
+      title: 'Delete OAuth app',
+      message: `Delete "${app.instance_name}"? Users will no longer be able to use it.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setDialog(null);
+        try {
+          await apiClient.deleteOAuthApp(app.id);
+          showSuccess('OAuth app deleted successfully!');
+        } catch (err) {
+          showError(err.message || 'Failed to delete OAuth app');
+        }
+        loadApps();
+      },
+    });
   };
 
   const handleToggleEnabled = async (app) => {
@@ -226,7 +254,7 @@ export default function OAuthAppsManager() {
                           </div>
 
                           <div
-                            onClick={() => handleDelete(app.id)}
+                            onClick={() => handleDelete(app)}
                             className="btn-icon btn-icon-danger"
                             title="Delete"
                             role="button"
@@ -234,7 +262,7 @@ export default function OAuthAppsManager() {
                             onKeyDown={(e) => {
                               if (e.key === 'Enter' || e.key === ' ') {
                                 e.preventDefault();
-                                handleDelete(app.id);
+                                handleDelete(app);
                               }
                             }}
                             aria-label="Delete OAuth app"
@@ -378,6 +406,7 @@ export default function OAuthAppsManager() {
           </div>
         )}
       </div>
+      {dialog && <ConfirmDialog {...dialog} onCancel={() => setDialog(null)} />}
     </div>
   );
 }
