@@ -1,0 +1,60 @@
+/* Profile page overrides (loaded after Home.css) */
+
+.profile-page .brand-name {
+  margin: 0;
+  font-size: 24px;
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* Profile card and stats come first when the layout is single column */
+@media (max-width: 1024px) {
+  .profile-page .profile-sidebar {
+    order: 0;
+  }
+
+  .profile-page .main-content {
+    order: 1;
+  }
+}
+
+/* Compact single-row header on mobile, keeping the welcome text */
+@media (max-width: 768px) {
+  .profile-page .header-content {
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 0 16px 12px;
+  }
+
+  .profile-page .logo-section {
+    width: auto;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+
+  .profile-page .user-info {
+    width: auto;
+    flex: 1;
+    min-width: 0;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  .profile-page .welcome-text {
+    display: block;
+    flex: 1;
+    min-width: 0;
+    text-align: right;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .profile-page .brand-name {
+    font-size: 18px;
+  }
+}
