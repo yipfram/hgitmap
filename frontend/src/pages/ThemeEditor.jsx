@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../api/client';
 import ColorSchemePicker from '../components/ColorSchemePicker';
@@ -16,6 +16,8 @@ function ThemeEditor() {
   const [loading, setLoading] = useState(isEditing);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
+  const [fieldErrors, setFieldErrors] = useState({});
+  const errorRef = useRef(null);
   const [availableFonts, setAvailableFonts] = useState([]);
   const [slugTouched, setSlugTouched] = useState(false);
 
@@ -198,8 +200,32 @@ function ThemeEditor() {
     setFormData(prev => ({ ...prev, theme_mode: mode, ...defaults }));
   };
 
+  const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
+
+  const validate = () => {
+    const errs = {};
+    if (!formData.name.trim()) errs.name = 'Theme name is required';
+    if (!formData.slug) errs.slug = 'Slug is required';
+    else if (!SLUG_RE.test(formData.slug)) {
+      errs.slug = 'Slug may only contain lowercase letters, digits and single hyphens (no leading/trailing hyphen)';
+    }
+    if (formData.output_formats.length === 0) errs.output_formats = 'Select at least one output format';
+    return errs;
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const errs = validate();
+    setFieldErrors(errs);
+    if (Object.keys(errs).length > 0) {
+      setError('Please fix the highlighted fields before saving.');
+      const first = ['name', 'slug', 'output_formats'].find(k => errs[k]);
+      const el = document.getElementById(`field-${first}`);
+      el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el?.focus({ preventScroll: true });
+      return;
+    }
 
     try {
       setSaving(true);
@@ -215,6 +241,7 @@ function ThemeEditor() {
     } catch (err) {
       setError(err.message);
       setSaving(false);
+      setTimeout(() => errorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }), 0);
     }
   };
 
@@ -231,37 +258,39 @@ function ThemeEditor() {
         </button>
       </div>
 
-      {error && <div className="error-message">{error}</div>}
-
       <form onSubmit={handleSubmit} className="theme-form">
         {/* Basic Information */}
         <section className="form-section">
           <h2>Basic Information</h2>
 
           <div className="form-group">
-            <label>Theme Name *</label>
+            <label htmlFor="field-name">Theme Name *</label>
             <input
+              id="field-name"
+              aria-invalid={!!fieldErrors.name}
               type="text"
               value={formData.name}
               onChange={(e) => handleNameChange(e.target.value)}
               required
               placeholder="My Awesome Theme"
             />
+            {fieldErrors.name && <p className="hint-text" role="alert" style={{ color: 'var(--error-color, #d73a49)' }}>{fieldErrors.name}</p>}
           </div>
 
           <div className="form-group">
-            <label>Slug * <span className="hint">(URL-safe identifier)</span></label>
+            <label htmlFor="field-slug">Slug * <span className="hint">(URL-safe identifier)</span></label>
             <input
+              id="field-slug"
               type="text"
               value={formData.slug}
               onChange={(e) => handleSlugChange(e.target.value)}
               required
               disabled={isEditing}
               placeholder="my-awesome-theme"
-              aria-invalid={slugInvalid}
-              aria-describedby={slugInvalid ? 'slug-error' : undefined}
+              aria-invalid={!!fieldErrors.slug || slugInvalid}
+              aria-describedby={(fieldErrors.slug || slugInvalid) ? 'slug-error' : undefined}
             />
-            {slugInvalid && <p id="slug-error" className="field-error" role="alert">{SLUG_HINT}</p>}
+            {(fieldErrors.slug || slugInvalid) && <p id="slug-error" className="field-error" role="alert">{fieldErrors.slug || SLUG_HINT}</p>}
             {isEditing && <p className="hint-text">Slug cannot be changed after creation</p>}
           </div>
 
@@ -276,11 +305,12 @@ function ThemeEditor() {
           </div>
 
           <div className="form-group">
-            <label>Theme Mode</label>
-            <div className="radio-group">
+            <label id="theme-mode-label">Theme Mode</label>
+            <div className="radio-group" role="radiogroup" aria-labelledby="theme-mode-label">
               <label className="radio-option">
                 <input
                   type="radio"
+                  name="theme_mode"
                   checked={formData.theme_mode === 'light'}
                   onChange={() => handleThemeModeChange('light')}
                 />
@@ -289,6 +319,7 @@ function ThemeEditor() {
               <label className="radio-option">
                 <input
                   type="radio"
+                  name="theme_mode"
                   checked={formData.theme_mode === 'dark'}
                   onChange={() => handleThemeModeChange('dark')}
                 />
@@ -705,11 +736,12 @@ function ThemeEditor() {
         <section className="form-section">
           <h2>Output Formats *</h2>
 
-          <div className="checkbox-group-horizontal">
+          <div className="checkbox-group-horizontal" role="group" aria-label="Output formats">
             {FORMATS.map(format => (
               <label key={format} className="checkbox-option">
                 <input
                   type="checkbox"
+                  id={format === FORMATS[0] ? 'field-output_formats' : undefined}
                   checked={formData.output_formats.includes(format)}
                   onChange={(e) => {
                     if (e.target.checked) {
@@ -724,12 +756,14 @@ function ThemeEditor() {
             ))}
           </div>
           <p className="hint-text">Select one or more formats for generated heatmaps</p>
+          {fieldErrors.output_formats && <p className="hint-text" role="alert" style={{ color: 'var(--error-color, #d73a49)' }}>{fieldErrors.output_formats}</p>}
         </section>
 
         {/* Preview */}
         <HeatmapPreview theme={formData} />
 
         {/* Submit */}
+        {error && <div className="error-message" role="alert" ref={errorRef}>{error}</div>}
         <div className="form-actions">
           <button
             type="button"
