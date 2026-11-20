@@ -55,6 +55,7 @@
 }
 
 .theme-card {
+  min-width: 0;
   background: var(--background-secondary);
   border: 1px solid var(--border-color);
   border-radius: 12px;
@@ -244,6 +245,7 @@
 
 .embed-url-row code {
   flex: 1;
+  min-width: 0;
   background: var(--background-secondary);
   padding: 0.5rem;
   border-radius: 4px;
@@ -303,7 +305,7 @@
 
 @media (max-width: 768px) {
   .themes-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
 
   .themes-header {
