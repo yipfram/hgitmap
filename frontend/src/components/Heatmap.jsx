@@ -340,7 +340,7 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   return (
-    <div className="heatmap-container">
+    <div className="heatmap-container" data-platform={platformFilter}>
       <div className="heatmap-layout">
         <div className="heatmap-main">
           {/* Header */}

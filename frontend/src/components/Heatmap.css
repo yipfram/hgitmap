@@ -235,23 +235,23 @@
 
 /* Contribution intensity levels - GitHub 2024 exact colors */
 .heatmap-day.level-0 {
-  background-color: #eff2f5;
+  background-color: var(--hm-0);
 }
 
 .heatmap-day.level-1 {
-  background-color: #aceebb;
+  background-color: var(--hm-1);
 }
 
 .heatmap-day.level-2 {
-  background-color: #4ac26b;
+  background-color: var(--hm-2);
 }
 
 .heatmap-day.level-3 {
-  background-color: #2da44e;
+  background-color: var(--hm-3);
 }
 
 .heatmap-day.level-4 {
-  background-color: #116329;
+  background-color: var(--hm-4);
 }
 
 /* Dark mode support */
@@ -264,23 +264,23 @@
 }
 
 [data-theme='dark'] .heatmap-day.level-0 {
-  background-color: #151b23;
+  background-color: var(--hm-0);
 }
 
 [data-theme='dark'] .heatmap-day.level-1 {
-  background-color: #033a16;
+  background-color: var(--hm-1);
 }
 
 [data-theme='dark'] .heatmap-day.level-2 {
-  background-color: #196c2e;
+  background-color: var(--hm-2);
 }
 
 [data-theme='dark'] .heatmap-day.level-3 {
-  background-color: #2ea043;
+  background-color: var(--hm-3);
 }
 
 [data-theme='dark'] .heatmap-day.level-4 {
-  background-color: #56d364;
+  background-color: var(--hm-4);
 }
 
 .heatmap-legend {
@@ -305,23 +305,23 @@
 }
 
 .legend-square.level-0 {
-  background-color: #eff2f5;
+  background-color: var(--hm-0);
 }
 
 .legend-square.level-1 {
-  background-color: #aceebb;
+  background-color: var(--hm-1);
 }
 
 .legend-square.level-2 {
-  background-color: #4ac26b;
+  background-color: var(--hm-2);
 }
 
 .legend-square.level-3 {
-  background-color: #2da44e;
+  background-color: var(--hm-3);
 }
 
 .legend-square.level-4 {
-  background-color: #116329;
+  background-color: var(--hm-4);
 }
 
 /* Dark mode legend */
@@ -330,23 +330,23 @@
 }
 
 [data-theme='dark'] .legend-square.level-0 {
-  background-color: #151b23;
+  background-color: var(--hm-0);
 }
 
 [data-theme='dark'] .legend-square.level-1 {
-  background-color: #033a16;
+  background-color: var(--hm-1);
 }
 
 [data-theme='dark'] .legend-square.level-2 {
-  background-color: #196c2e;
+  background-color: var(--hm-2);
 }
 
 [data-theme='dark'] .legend-square.level-3 {
-  background-color: #2ea043;
+  background-color: var(--hm-3);
 }
 
 [data-theme='dark'] .legend-square.level-4 {
-  background-color: #56d364;
+  background-color: var(--hm-4);
 }
 
 .no-contributions-message {
@@ -411,4 +411,24 @@
     flex-direction: column;
     gap: 0.75rem;
   }
+}
+
+/* Platform-specific palettes (applied via data-platform on .heatmap-container) */
+.heatmap-container {
+  --hm-0: #eff2f5; --hm-1: #aceebb; --hm-2: #4ac26b; --hm-3: #2da44e; --hm-4: #116329;
+}
+[data-theme='dark'] .heatmap-container {
+  --hm-0: #151b23; --hm-1: #033a16; --hm-2: #196c2e; --hm-3: #2ea043; --hm-4: #56d364;
+}
+.heatmap-container[data-platform='gitlab'] {
+  --hm-0: #eff2f5; --hm-1: #fdd9b5; --hm-2: #fca46a; --hm-3: #fc6d26; --hm-4: #a8430a;
+}
+[data-theme='dark'] .heatmap-container[data-platform='gitlab'] {
+  --hm-0: #151b23; --hm-1: #4a2410; --hm-2: #8f3f14; --hm-3: #d9561b; --hm-4: #ff9455;
+}
+.heatmap-container[data-platform='gitea'] {
+  --hm-0: #eff2f5; --hm-1: #d3e6b8; --hm-2: #a3c971; --hm-3: #609926; --hm-4: #34550f;
+}
+[data-theme='dark'] .heatmap-container[data-platform='gitea'] {
+  --hm-0: #151b23; --hm-1: #2a3d12; --hm-2: #44661b; --hm-3: #609926; --hm-4: #9bd05a;
 }
