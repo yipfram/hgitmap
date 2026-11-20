@@ -15,8 +15,7 @@
     },
     {
       "matchManagers": [
-        "dockerfile",
-        "docker-compose"
+        "dockerfile"
       ],
       "groupName": "docker base images"
     },
