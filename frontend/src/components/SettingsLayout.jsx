@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Link, useLocation, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import './SettingsLayout.css';
@@ -5,6 +6,12 @@ import './SettingsLayout.css';
 export default function SettingsLayout() {
   const location = useLocation();
   const { user } = useAuth();
+  const navRef = useRef(null);
+
+  useEffect(() => {
+    const active = navRef.current?.querySelector('[aria-current="page"]');
+    active?.scrollIntoView?.({ inline: 'center', block: 'nearest' });
+  }, [location.pathname]);
 
   const navItems = [
     {
@@ -69,7 +76,7 @@ export default function SettingsLayout() {
             </Link>
             <h2>Settings</h2>
           </div>
-          <nav className="settings-nav">
+          <nav className="settings-nav" ref={navRef}>
             {navItems.map((item) => {
               // Check if current path matches or starts with the item path (for sub-routes)
               const isActive =
@@ -81,6 +88,7 @@ export default function SettingsLayout() {
                   key={item.path}
                   to={item.path}
                   className={`settings-nav-item ${isActive ? 'active' : ''}`}
+                  aria-current={isActive ? 'page' : undefined}
                 >
                   <span className="nav-icon">{item.icon}</span>
                   <span className="nav-label">{item.label}</span>
