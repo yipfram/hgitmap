@@ -1,5 +1,22 @@
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8080';
 
+// Read a response body without assuming it is JSON
+async function parseBody(response) {
+  const text = await response.text();
+  if (!text) return null;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
+function errorMessage(data, response, fallback) {
+  if (data && typeof data === 'object' && data.error) return data.error;
+  if (typeof data === 'string' && data.trim()) return data.trim();
+  return response.statusText || fallback;
+}
+
 class ApiClient {
   constructor() {
     this.isHandlingExpiration = false;
@@ -18,10 +35,10 @@ class ApiClient {
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await response.json();
+    const data = await parseBody(response);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Registration failed');
+      throw new Error(errorMessage(data, response, 'Registration failed'));
     }
 
     return data;
@@ -48,10 +65,10 @@ class ApiClient {
       body: JSON.stringify({ username, password }),
     });
 
-    const data = await response.json();
+    const data = await parseBody(response);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Login failed');
+      throw new Error(errorMessage(data, response, 'Login failed'));
     }
 
     return data;
@@ -60,11 +77,6 @@ class ApiClient {
   async fetchWithAuth(url, options = {}) {
     const token = localStorage.getItem('token');
 
-    console.log(`🌐 [API] ${options.method || 'GET'} ${url}`);
-    if (options.body) {
-      console.log(`📤 [API] Request body:`, JSON.parse(options.body));
-    }
-
     const headers = {
       'Content-Type': 'application/json',
       ...options.headers,
@@ -72,29 +84,21 @@ class ApiClient {
 
     if (token) {
       headers['Authorization'] = `Bearer ${token}`;
-      console.log(`🔑 [API] Using auth token: ${token.substring(0, 20)}...`);
     }
 
-    const fullUrl = `${API_BASE_URL}${url}`;
-    console.log(`📍 [API] Full URL: ${fullUrl}`);
-
-    const response = await fetch(fullUrl, {
+    const response = await fetch(`${API_BASE_URL}${url}`, {
       ...options,
       headers,
     });
 
-    console.log(`📥 [API] Response status: ${response.status} ${response.statusText}`);
-
-    if (response.status === 401) {
-      console.error('❌ [API] Unauthorized - token expired');
-
+    // Only treat 401 as an expired session when we actually sent a token
+    if (response.status === 401 && token) {
       // Only handle expiration once, even if multiple API calls fail simultaneously
       if (!this.isHandlingExpiration) {
         this.isHandlingExpiration = true;
         localStorage.removeItem('token');
         localStorage.removeItem('user');
 
-        // Show toast notification instead of alert
         if (this.onSessionExpired) {
           this.onSessionExpired();
         }
@@ -105,25 +109,20 @@ class ApiClient {
         }, 3000);
       }
 
-      // Return a promise that never resolves to prevent further execution
-      return new Promise(() => { });
+      throw new Error('Your session has expired. Please log in again.');
     }
 
     // Handle 204 No Content responses (like DELETE)
     if (response.status === 204) {
-      console.log(`✅ [API] Request successful (No Content)`);
       return null;
     }
 
-    const data = await response.json();
-    console.log(`📦 [API] Response data:`, data);
+    const data = await parseBody(response);
 
     if (!response.ok) {
-      console.error(`❌ [API] Request failed:`, data);
-      throw new Error(data.error || 'Request failed');
+      throw new Error(errorMessage(data, response, 'Request failed'));
     }
 
-    console.log(`✅ [API] Request successful`);
     return data;
   }
 
@@ -451,10 +450,10 @@ class ApiClient {
 
     // Use regular fetch without auth
     const response = await fetch(`${API_BASE_URL}${url}`);
-    const data = await response.json();
+    const data = await parseBody(response);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to fetch user contributions');
+      throw new Error(errorMessage(data, response, 'Failed to fetch user contributions'));
     }
 
     return data;
@@ -463,10 +462,10 @@ class ApiClient {
   async getUserStats(username) {
     // Use regular fetch without auth
     const response = await fetch(`${API_BASE_URL}/users/${username}/contributions/stats`);
-    const data = await response.json();
+    const data = await parseBody(response);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to fetch user stats');
+      throw new Error(errorMessage(data, response, 'Failed to fetch user stats'));
     }
 
     return data;
@@ -475,10 +474,10 @@ class ApiClient {
   async getUserPlatforms(username) {
     // Use regular fetch without auth
     const response = await fetch(`${API_BASE_URL}/users/${username}/platforms`);
-    const data = await response.json();
+    const data = await parseBody(response);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to fetch user platforms');
+      throw new Error(errorMessage(data, response, 'Failed to fetch user platforms'));
     }
 
     return data;
@@ -497,10 +496,10 @@ class ApiClient {
 
     // Use regular fetch without auth
     const response = await fetch(`${API_BASE_URL}${url}`);
-    const data = await response.json();
+    const data = await parseBody(response);
 
     if (!response.ok) {
-      throw new Error(data.error || 'Failed to fetch user activities');
+      throw new Error(errorMessage(data, response, 'Failed to fetch user activities'));
     }
 
     return data;
