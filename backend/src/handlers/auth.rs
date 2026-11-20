@@ -35,10 +35,14 @@ pub struct ErrorResponse {
 }
 
 pub async fn register(
+    http_req: actix_web::HttpRequest,
     db: web::Data<DatabaseConnection>,
     config: web::Data<Config>,
     req: web::Json<RegisterRequest>,
 ) -> impl Responder {
+    if let Err(e) = crate::utils::rate_limit::check(&http_req, "register", 5, 3600) {
+        return e.error_response();
+    }
     log::info!("📝 Registration attempt for username: {}", req.username);
 
     // Check if registration is allowed
@@ -162,10 +166,14 @@ pub async fn register(
 }
 
 pub async fn login(
+    http_req: actix_web::HttpRequest,
     db: web::Data<DatabaseConnection>,
     config: web::Data<Config>,
     req: web::Json<LoginRequest>,
 ) -> impl Responder {
+    if let Err(e) = crate::utils::rate_limit::check(&http_req, "login", 10, 300) {
+        return e.error_response();
+    }
     log::info!("🔐 Login attempt for username: {}", req.username);
 
     // Find user by username

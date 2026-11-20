@@ -75,6 +75,68 @@ pub fn validate_platform(platform: &str) -> Result<()> {
     }
 }
 
+fn is_blocked_ip(ip: std::net::IpAddr) -> bool {
+    use std::net::IpAddr;
+    match ip {
+        IpAddr::V4(v4) => {
+            v4.is_private()
+                || v4.is_loopback()
+                || v4.is_link_local()
+                || v4.is_unspecified()
+                || v4.is_broadcast()
+                || v4.is_multicast()
+                || v4.octets()[0] == 0
+                || (v4.octets()[0] == 100 && (v4.octets()[1] & 0xc0) == 64) // CGNAT
+        }
+        IpAddr::V6(v6) => {
+            if let Some(v4) = v6.to_ipv4_mapped() {
+                return is_blocked_ip(IpAddr::V4(v4));
+            }
+            let seg0 = v6.segments()[0];
+            v6.is_loopback()
+                || v6.is_unspecified()
+                || v6.is_multicast()
+                || (seg0 & 0xfe00) == 0xfc00 // unique local
+                || (seg0 & 0xffc0) == 0xfe80 // link local
+        }
+    }
+}
+
+/// SSRF protection: reject instance URLs that point at loopback/private/link-local
+/// addresses (checked on every address the host resolves to).
+/// Set ALLOW_PRIVATE_INSTANCE_URLS=true to allow self-hosted instances on a LAN.
+pub async fn ensure_public_instance_url(url_str: &str) -> Result<()> {
+    if std::env::var("ALLOW_PRIVATE_INSTANCE_URLS")
+        .map(|v| v.eq_ignore_ascii_case("true"))
+        .unwrap_or(false)
+    {
+        return Ok(());
+    }
+    let url = validate_url(url_str)?;
+    if !url.username().is_empty() || url.password().is_some() {
+        return Err(anyhow!("URL must not contain credentials"));
+    }
+    let host = url.host_str().ok_or_else(|| anyhow!("URL must have a host"))?;
+    let port = url.port_or_known_default().unwrap_or(443);
+    let addrs: Vec<_> = tokio::net::lookup_host((host.trim_matches(|c| c == '[' || c == ']'), port))
+        .await
+        .map_err(|_| anyhow!("Could not resolve instance host"))?
+        .collect();
+    if addrs.is_empty() || addrs.iter().any(|a| is_blocked_ip(a.ip())) {
+        return Err(anyhow!("Instance URL must resolve to a public address"));
+    }
+    Ok(())
+}
+
+/// Heatmap file names: `<slug>.<svg|png|jpg|jpeg|webp>`, no path separators.
+pub fn is_safe_heatmap_filename(name: &str) -> bool {
+    let Some((stem, ext)) = name.rsplit_once('.') else { return false };
+    !stem.is_empty()
+        && stem.len() <= 100
+        && stem.chars().all(|c| c.is_ascii_alphanumeric() || c == '-' || c == '_')
+        && matches!(ext, "svg" | "png" | "jpg" | "jpeg" | "webp")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

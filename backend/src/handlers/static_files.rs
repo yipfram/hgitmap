@@ -38,6 +38,13 @@ pub async fn serve_heatmap(
 ) -> Result<HttpResponse, actix_web::Error> {
     let (user_id_str, filename) = path.into_inner();
 
+    // Reject anything that could escape the heatmap directory
+    if Uuid::parse_str(&user_id_str).is_err()
+        || !crate::utils::validators::is_safe_heatmap_filename(&filename)
+    {
+        return Err(actix_web::error::ErrorNotFound("Heatmap not found"));
+    }
+
     // Construct file path (using default directory)
     let base_dir = "static/heatmaps";
 
@@ -94,9 +101,11 @@ pub async fn serve_heatmap(
 /// Generates the heatmap on-demand if it doesn't exist yet
 /// Includes cache-busting headers to ensure GitHub's camo CDN refreshes the image
 pub async fn serve_embed(
+    req: actix_web::HttpRequest,
     db: web::Data<DatabaseConnection>,
     path: web::Path<(String, String)>,
 ) -> Result<HttpResponse, actix_web::Error> {
+    crate::utils::rate_limit::check(&req, "embed", 120, 60)?;
     let (username, theme_file) = path.into_inner();
 
     // Parse theme slug and format from filename

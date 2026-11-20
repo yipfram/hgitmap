@@ -4,3 +4,4 @@ pub mod auth;
 pub mod encryption;
 pub mod validators;
 pub mod http_client;
+pub mod rate_limit;

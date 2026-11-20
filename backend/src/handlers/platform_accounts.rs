@@ -97,6 +97,9 @@ pub async fn connect_platform(
             validators::validate_url(instance_url).map_err(|e| {
                 actix_web::error::ErrorBadRequest(format!("Invalid instance URL: {}", e))
             })?;
+            validators::ensure_public_instance_url(instance_url).await.map_err(|e| {
+                actix_web::error::ErrorBadRequest(format!("Invalid instance URL: {}", e))
+            })?;
 
             (
                 git_platform_account::GitPlatform::Gitea,
@@ -113,6 +116,9 @@ pub async fn connect_platform(
 
             // Validate instance URL
             validators::validate_url(instance_url).map_err(|e| {
+                actix_web::error::ErrorBadRequest(format!("Invalid instance URL: {}", e))
+            })?;
+            validators::ensure_public_instance_url(instance_url).await.map_err(|e| {
                 actix_web::error::ErrorBadRequest(format!("Invalid instance URL: {}", e))
             })?;
 
