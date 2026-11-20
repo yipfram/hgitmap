@@ -96,6 +96,7 @@ impl From<generated_heatmap::Model> for GeneratedHeatmapInfo {
 pub struct GenerationJobResponse {
     pub id: String,
     pub theme_id: Option<String>,
+    pub theme_name: Option<String>,
     pub status: String,
     pub scheduled_at: String,
     pub started_at: Option<String>,
@@ -109,6 +110,7 @@ impl From<heatmap_generation_job::Model> for GenerationJobResponse {
         Self {
             id: model.id.to_string(),
             theme_id: model.theme_id.map(|id| id.to_string()),
+            theme_name: None,
             status: match model.status {
                 heatmap_generation_job::GenerationJobStatus::Pending => "pending".to_string(),
                 heatmap_generation_job::GenerationJobStatus::Processing => "processing".to_string(),
@@ -461,8 +463,33 @@ pub async fn list_generation_jobs(
             actix_web::error::ErrorInternalServerError("Database error")
         })?;
 
-    let response: Vec<GenerationJobResponse> =
-        jobs.into_iter().map(GenerationJobResponse::from).collect();
+    // Resolve theme names for jobs targeting a single theme
+    let theme_ids: Vec<Uuid> = jobs.iter().filter_map(|j| j.theme_id).collect();
+    let theme_names: std::collections::HashMap<Uuid, String> = if theme_ids.is_empty() {
+        std::collections::HashMap::new()
+    } else {
+        heatmap_theme::Entity::find()
+            .filter(heatmap_theme::Column::Id.is_in(theme_ids))
+            .all(db.as_ref())
+            .await
+            .map_err(|e| {
+                log::error!("Database error: {}", e);
+                actix_web::error::ErrorInternalServerError("Database error")
+            })?
+            .into_iter()
+            .map(|t| (t.id, t.name))
+            .collect()
+    };
+
+    let response: Vec<GenerationJobResponse> = jobs
+        .into_iter()
+        .map(|job| {
+            let theme_name = job.theme_id.and_then(|id| theme_names.get(&id).cloned());
+            let mut resp = GenerationJobResponse::from(job);
+            resp.theme_name = theme_name;
+            resp
+        })
+        .collect();
 
     Ok(HttpResponse::Ok().json(response))
 }
