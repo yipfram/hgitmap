@@ -11,7 +11,48 @@ use crate::models::{contribution, git_platform_account, user, user_setting};
 pub struct ContributionsQuery {
     pub from: Option<String>,
     pub to: Option<String>,
-    pub platform: Option<String>, // Filter by platform: "github", "gitea", etc.
+    pub platform: Option<String>, // Filter by platform type: "github", "gitea", etc.
+    pub account_id: Option<String>, // Filter by platform account id
+}
+
+#[derive(Debug, Deserialize)]
+pub struct StatsQuery {
+    pub platform: Option<String>,
+    pub account_id: Option<String>,
+}
+
+/// Restrict a platform account query by account id (preferred) and/or platform type.
+/// A UUID passed as `platform` is treated as an account id.
+/// Accounts are already scoped to the user by the caller, so an id of another user matches nothing.
+pub fn filter_accounts(
+    mut q: Select<git_platform_account::Entity>,
+    platform: Option<&str>,
+    account_id: Option<&str>,
+) -> Result<Select<git_platform_account::Entity>, String> {
+    let mut id = account_id.filter(|s| !s.is_empty());
+    let mut ptype = platform.filter(|s| !s.is_empty());
+    if id.is_none() {
+        if let Some(p) = ptype {
+            if Uuid::parse_str(p).is_ok() {
+                id = Some(p);
+                ptype = None;
+            }
+        }
+    }
+    if let Some(id) = id {
+        let uuid = Uuid::parse_str(id).map_err(|_| format!("Invalid account id: {}", id))?;
+        q = q.filter(git_platform_account::Column::Id.eq(uuid));
+    }
+    if let Some(p) = ptype {
+        let platform_type = match p.to_lowercase().as_str() {
+            "github" => git_platform_account::GitPlatform::GitHub,
+            "gitea" => git_platform_account::GitPlatform::Gitea,
+            "gitlab" => git_platform_account::GitPlatform::GitLab,
+            _ => return Err(format!("Invalid platform: {}", p)),
+        };
+        q = q.filter(git_platform_account::Column::PlatformType.eq(platform_type));
+    }
+    Ok(q)
 }
 
 #[derive(Debug, Serialize)]
@@ -64,22 +105,17 @@ pub async fn get_contributions(
         .filter(git_platform_account::Column::UserId.eq(user_id))
         .filter(git_platform_account::Column::IsActive.eq(true));
 
-    // Filter by platform type if specified
-    if let Some(platform_filter) = &query.platform {
-        let platform_type = match platform_filter.to_lowercase().as_str() {
-            "github" => git_platform_account::GitPlatform::GitHub,
-            "gitea" => git_platform_account::GitPlatform::Gitea,
-            "gitlab" => git_platform_account::GitPlatform::GitLab,
-            _ => {
-                log::warn!("Invalid platform filter: {}", platform_filter);
-                return Ok(HttpResponse::BadRequest().json(serde_json::json!({
-                    "error": format!("Invalid platform: {}", platform_filter)
-                })));
-            }
-        };
-        accounts_query =
-            accounts_query.filter(git_platform_account::Column::PlatformType.eq(platform_type));
-    }
+    // Filter by account id (preferred) or platform type
+    accounts_query = match crate::handlers::contributions::filter_accounts(
+        accounts_query,
+        query.platform.as_deref(),
+        query.account_id.as_deref(),
+    ) {
+        Ok(q) => q,
+        Err(msg) => {
+            return Ok(HttpResponse::BadRequest().json(serde_json::json!({ "error": msg })));
+        }
+    };
 
     let accounts = accounts_query.all(db.as_ref()).await.map_err(|e| {
         log::error!("Database error: {}", e);
@@ -156,6 +192,7 @@ pub async fn get_contributions(
 pub async fn get_stats(
     db: web::Data<DatabaseConnection>,
     user_claims: web::ReqData<crate::middleware::auth::Claims>,
+    query: web::Query<StatsQuery>,
 ) -> Result<impl Responder, actix_web::Error> {
     let user_id = Uuid::parse_str(&user_claims.sub)
         .map_err(|e| actix_web::error::ErrorBadRequest(format!("Invalid user ID: {}", e)))?;
@@ -176,24 +213,41 @@ pub async fn get_stats(
         .unwrap_or(true);
 
     // Get all active platform accounts
-    let accounts = git_platform_account::Entity::find()
+    let base_query = git_platform_account::Entity::find()
         .filter(git_platform_account::Column::UserId.eq(user_id))
-        .filter(git_platform_account::Column::IsActive.eq(true))
-        .all(db.as_ref())
+        .filter(git_platform_account::Column::IsActive.eq(true));
+
+    let active_platforms = base_query
+        .clone()
+        .count(db.as_ref())
         .await
         .map_err(|e| {
             log::error!("Database error: {}", e);
             actix_web::error::ErrorInternalServerError("Database error")
-        })?;
+        })? as i32;
 
-    let active_platforms = accounts.len() as i32;
+    let filtered_query = match filter_accounts(
+        base_query,
+        query.platform.as_deref(),
+        query.account_id.as_deref(),
+    ) {
+        Ok(q) => q,
+        Err(msg) => {
+            return Ok(HttpResponse::BadRequest().json(serde_json::json!({ "error": msg })));
+        }
+    };
+
+    let accounts = filtered_query.all(db.as_ref()).await.map_err(|e| {
+        log::error!("Database error: {}", e);
+        actix_web::error::ErrorInternalServerError("Database error")
+    })?;
 
     if accounts.is_empty() {
         return Ok(HttpResponse::Ok().json(ContributionStatsResponse {
             total_contributions: 0,
             current_streak: 0,
             longest_streak: 0,
-            active_platforms: 0,
+            active_platforms,
         }));
     }
 
@@ -334,22 +388,17 @@ pub async fn get_user_contributions(
         .filter(git_platform_account::Column::UserId.eq(user_id))
         .filter(git_platform_account::Column::IsActive.eq(true));
 
-    // Filter by platform type if specified
-    if let Some(platform_filter) = &query.platform {
-        let platform_type = match platform_filter.to_lowercase().as_str() {
-            "github" => git_platform_account::GitPlatform::GitHub,
-            "gitea" => git_platform_account::GitPlatform::Gitea,
-            "gitlab" => git_platform_account::GitPlatform::GitLab,
-            _ => {
-                log::warn!("Invalid platform filter: {}", platform_filter);
-                return Ok(HttpResponse::BadRequest().json(serde_json::json!({
-                    "error": format!("Invalid platform: {}", platform_filter)
-                })));
-            }
-        };
-        accounts_query =
-            accounts_query.filter(git_platform_account::Column::PlatformType.eq(platform_type));
-    }
+    // Filter by account id (preferred) or platform type
+    accounts_query = match crate::handlers::contributions::filter_accounts(
+        accounts_query,
+        query.platform.as_deref(),
+        query.account_id.as_deref(),
+    ) {
+        Ok(q) => q,
+        Err(msg) => {
+            return Ok(HttpResponse::BadRequest().json(serde_json::json!({ "error": msg })));
+        }
+    };
 
     let accounts = accounts_query.all(db.as_ref()).await.map_err(|e| {
         log::error!("Database error: {}", e);
@@ -426,6 +475,7 @@ pub async fn get_user_contributions(
 pub async fn get_user_stats(
     db: web::Data<DatabaseConnection>,
     path: web::Path<String>,
+    query: web::Query<StatsQuery>,
 ) -> Result<impl Responder, actix_web::Error> {
     let username = path.into_inner();
 
@@ -468,24 +518,41 @@ pub async fn get_user_stats(
         .unwrap_or(true);
 
     // Get all active platform accounts
-    let accounts = git_platform_account::Entity::find()
+    let base_query = git_platform_account::Entity::find()
         .filter(git_platform_account::Column::UserId.eq(user_id))
-        .filter(git_platform_account::Column::IsActive.eq(true))
-        .all(db.as_ref())
+        .filter(git_platform_account::Column::IsActive.eq(true));
+
+    let active_platforms = base_query
+        .clone()
+        .count(db.as_ref())
         .await
         .map_err(|e| {
             log::error!("Database error: {}", e);
             actix_web::error::ErrorInternalServerError("Database error")
-        })?;
+        })? as i32;
 
-    let active_platforms = accounts.len() as i32;
+    let filtered_query = match filter_accounts(
+        base_query,
+        query.platform.as_deref(),
+        query.account_id.as_deref(),
+    ) {
+        Ok(q) => q,
+        Err(msg) => {
+            return Ok(HttpResponse::BadRequest().json(serde_json::json!({ "error": msg })));
+        }
+    };
+
+    let accounts = filtered_query.all(db.as_ref()).await.map_err(|e| {
+        log::error!("Database error: {}", e);
+        actix_web::error::ErrorInternalServerError("Database error")
+    })?;
 
     if accounts.is_empty() {
         return Ok(HttpResponse::Ok().json(ContributionStatsResponse {
             total_contributions: 0,
             current_streak: 0,
             longest_streak: 0,
-            active_platforms: 0,
+            active_platforms,
         }));
     }
 

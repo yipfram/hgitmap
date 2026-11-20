@@ -13,6 +13,7 @@ pub struct ActivitiesQuery {
     pub limit: Option<i32>,
     pub offset: Option<i32>,
     pub platform: Option<String>,
+    pub account_id: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -169,21 +170,17 @@ async fn fetch_activities(
         .filter(git_platform_account::Column::UserId.eq(user_id))
         .filter(git_platform_account::Column::IsActive.eq(true));
 
-    // Filter by platform type if specified
-    if let Some(platform_filter) = &query.platform {
-        let platform_type = match platform_filter.to_lowercase().as_str() {
-            "github" => git_platform_account::GitPlatform::GitHub,
-            "gitea" => git_platform_account::GitPlatform::Gitea,
-            "gitlab" => git_platform_account::GitPlatform::GitLab,
-            _ => {
-                return Ok(HttpResponse::BadRequest().json(serde_json::json!({
-                    "error": format!("Invalid platform filter: {}", platform_filter)
-                })));
-            }
-        };
-        accounts_query =
-            accounts_query.filter(git_platform_account::Column::PlatformType.eq(platform_type));
-    }
+    // Filter by account id (preferred) or platform type
+    accounts_query = match crate::handlers::contributions::filter_accounts(
+        accounts_query,
+        query.platform.as_deref(),
+        query.account_id.as_deref(),
+    ) {
+        Ok(q) => q,
+        Err(msg) => {
+            return Ok(HttpResponse::BadRequest().json(serde_json::json!({ "error": msg })));
+        }
+    };
 
     let accounts = accounts_query.all(db).await.map_err(|e| {
         log::error!("Database error: {}", e);
