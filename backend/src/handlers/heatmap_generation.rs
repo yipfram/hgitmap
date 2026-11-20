@@ -223,7 +223,7 @@ pub async fn update_generation_settings(
 
             if !has_any_sync_enabled {
                 return Err(actix_web::error::ErrorBadRequest(
-                    "Cannot enable automatic sync: At least one platform must have at least one sync type enabled (Profile or Heatmap+Activities)"
+                    "Cannot enable automatic generation: at least one connected platform must have a sync type enabled (Profile or Heatmap + Activities)"
                 ));
             }
         }
