@@ -11,7 +11,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import OidcCallback from './pages/OidcCallback';
 import Landing from './pages/Landing';
-import Profile from './pages/Profile';
+import ProfileRoute from './pages/ProfileRoute';
+import NotFound from './pages/NotFound';
 import PlatformManagement from './pages/PlatformManagement';
 import OAuthCallback from './pages/OAuthCallback';
 import HeatmapThemes from './pages/HeatmapThemes';
@@ -64,7 +65,7 @@ function App() {
                     <Route path="/oidc/callback" element={<OidcCallback />} />
                     <Route path="/" element={<RootRedirect />} />
                     {/* Public profile route */}
-                    <Route path="/:username" element={<Profile />} />
+                    <Route path="/:username" element={<ProfileRoute />} />
                     <Route
                       path="/settings"
                       element={
@@ -97,7 +98,7 @@ function App() {
                         </ProtectedRoute>
                       }
                     />
-                    <Route path="*" element={<Navigate to="/" replace />} />
+                    <Route path="*" element={<NotFound />} />
                   </Routes>
                 </div>
                 <Footer />
