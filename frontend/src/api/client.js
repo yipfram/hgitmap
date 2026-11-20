@@ -243,8 +243,8 @@ class ApiClient {
     return this.fetchWithAuth(url);
   }
 
-  async getContributionStats() {
-    return this.fetchWithAuth('/contributions/stats');
+  async getContributionStats(accountId = null) {
+    return this.fetchWithAuth(accountId ? `/contributions/stats?account_id=${encodeURIComponent(accountId)}` : '/contributions/stats');
   }
 
   // Activities
@@ -464,9 +464,10 @@ class ApiClient {
     return data;
   }
 
-  async getUserStats(username) {
+  async getUserStats(username, accountId = null) {
     // Use regular fetch without auth
-    const response = await fetch(`${API_BASE_URL}/users/${username}/contributions/stats`);
+    const suffix = accountId ? `?account_id=${encodeURIComponent(accountId)}` : '';
+    const response = await fetch(`${API_BASE_URL}/users/${username}/contributions/stats${suffix}`);
     const data = await parseBody(response);
 
     if (!response.ok) {

@@ -15,6 +15,21 @@ const parseLocalDate = (str) => {
   return new Date(y, m - 1, d);
 };
 
+const PLATFORM_NAMES = { github: 'GitHub', gitlab: 'GitLab', gitea: 'Gitea' };
+
+function getAccountLabel(account) {
+  const name = PLATFORM_NAMES[account.platform] || account.platform;
+  let detail = account.platform_username;
+  if (account.platform_url) {
+    try {
+      detail = new URL(account.platform_url).hostname;
+    } catch {
+      detail = account.platform_url;
+    }
+  }
+  return detail ? `${name} (${detail})` : name;
+}
+
 function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, isPublic = false }) {
   const [contributions, setContributions] = useState([]);
   const [_stats, setStats] = useState(null);
@@ -28,20 +43,20 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
   const wrapperRef = useRef(null);
   const gridRef = useRef(null);
 
-  // Load available platforms on mount (only for authenticated users viewing their own profile)
+  // Load available platform accounts (own or public)
   useEffect(() => {
-    if (!isPublic) {
-      const loadPlatforms = async () => {
-        try {
-          const platformList = await apiClient.listPlatforms();
-          setPlatforms(platformList);
-        } catch (err) {
-          console.error('Failed to load platforms:', err);
-        }
-      };
-      loadPlatforms();
-    }
-  }, [isPublic]);
+    const loadPlatforms = async () => {
+      try {
+        const platformList = isPublic
+          ? await apiClient.getUserPlatforms(username)
+          : await apiClient.listPlatforms();
+        setPlatforms(platformList);
+      } catch (err) {
+        console.error('Failed to load platforms:', err);
+      }
+    };
+    loadPlatforms();
+  }, [isPublic, username]);
 
   const loadData = useCallback(async () => {
     try {
@@ -76,14 +91,17 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
 
       }
 
+      // platformFilter is a platform account id ('all' = every account)
+      const accountFilter = platformFilter !== 'all' ? platformFilter : null;
+
       // Use public or authenticated API based on isPublic flag
       const [contributionsData, statsData] = await Promise.all([
         isPublic
-          ? apiClient.getUserContributions(username, fromDate, toDate, platformFilter !== 'all' ? platformFilter : null)
-          : apiClient.getContributions(fromDate, toDate, platformFilter !== 'all' ? platformFilter : null),
+          ? apiClient.getUserContributions(username, fromDate, toDate, accountFilter)
+          : apiClient.getContributions(fromDate, toDate, accountFilter),
         isPublic
-          ? apiClient.getUserStats(username)
-          : apiClient.getContributionStats(),
+          ? apiClient.getUserStats(username, accountFilter)
+          : apiClient.getContributionStats(accountFilter),
       ]);
 
 
@@ -433,9 +451,8 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
             >
               <option value="all">All Platforms</option>
               {platforms.map((platform) => (
-                <option key={platform.id} value={platform.platform}>
-                  {platform.platform.charAt(0).toUpperCase() + platform.platform.slice(1)}
-                  {platform.platform_url ? ` (${new URL(platform.platform_url).hostname})` : ''}
+                <option key={platform.id} value={platform.id}>
+                  {getAccountLabel(platform)}
                 </option>
               ))}
             </select>

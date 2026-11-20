@@ -27,8 +27,6 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
       setLoading(true);
       setError(null);
 
-      console.log('🔍 [ActivityTimeline] Loading activities with offset:', newOffset, 'platform:', platformFilter);
-      console.log('🔍 [ActivityTimeline] Current state - activities.length:', activities.length, 'initialLoadComplete:', initialLoadComplete);
 
       // Pass platform filter to API (null if 'all')
       const platform = platformFilter !== 'all' ? platformFilter : null;
@@ -38,44 +36,35 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
         ? await apiClient.getUserActivities(username, null, null, limit, newOffset, platform)
         : await apiClient.getActivities(null, null, limit, newOffset, platform);
 
-      console.log('📦 [ActivityTimeline] Received activity data:', data);
-      console.log('📦 [ActivityTimeline] Activities count:', data.activities?.length, 'has_more:', data.has_more);
 
       if (newOffset === 0) {
         // Initial load
-        console.log('✅ [ActivityTimeline] Initial load - setting activities and marking complete');
         setActivities(data.activities || []);
         setInitialLoadComplete(true);
       } else {
         // Load more
-        console.log('➕ [ActivityTimeline] Loading more - appending activities');
         setActivities(prev => [...prev, ...(data.activities || [])]);
       }
 
       setHasMore(data.has_more);
       setOffset(newOffset);
 
-      console.log(`✅ [ActivityTimeline] Loaded ${data.activities?.length || 0} activities (total: ${data.total})`);
     } catch (err) {
       console.error('❌ [ActivityTimeline] Failed to load activities:', err);
       setError(err.message);
     } finally {
       setLoading(false);
-      console.log('🏁 [ActivityTimeline] Loading finished, loading state set to false');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [limit, platformFilter, isPublic, username]);
 
   useEffect(() => {
-    console.log('🔄 [ActivityTimeline] useEffect triggered - resetting state');
-    console.log('🔄 [ActivityTimeline] platformFilter:', platformFilter);
 
     // Reset state when platform filter changes
     setInitialLoadComplete(false);
     setActivities([]);
     setOffset(0);
 
-    console.log('🚀 [ActivityTimeline] Calling loadActivities(0)');
     loadActivities(0);
 
     // Fetch platforms to get platform usernames
@@ -85,7 +74,6 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
           ? await apiClient.getUserPlatforms(username)
           : await apiClient.getPlatforms();
         setPlatforms(platformsData);
-        console.log('👥 [ActivityTimeline] Fetched platforms:', platformsData.length);
       } catch (err) {
         console.error('❌ [ActivityTimeline] Failed to fetch platforms:', err);
       }
@@ -121,12 +109,10 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
     // Track processed activity IDs to avoid double-counting
     const processedActivityIds = new Set();
 
-    console.log('📊 [groupActivitiesByMonth] Total activities to process:', activities.length);
 
     activities.forEach((activity, index) => {
       // Skip if we've already processed this activity
       if (processedActivityIds.has(activity.id)) {
-        console.log('⚠️  [groupActivitiesByMonth] Skipping duplicate activity ID:', activity.id, activity.activity_type);
         return;
       }
       processedActivityIds.add(activity.id);
@@ -135,7 +121,6 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
       const monthYear = `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
 
       if (!groups[monthYear]) {
-        console.log('📅 [groupActivitiesByMonth] Creating new month group:', monthYear);
         groups[monthYear] = [];
       }
 
@@ -153,22 +138,17 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
       groups[monthYear].push(activity);
 
       if (index < 3) {
-        console.log(`   Activity ${index + 1}:`, activity.activity_type, 'on', activity.date, '→', monthYear);
       }
     });
 
-    console.log('📊 [groupActivitiesByMonth] Final groups:', Object.keys(groups));
     return groups;
   };
 
   const generateAllMonths = (groupedActivities) => {
-    console.log('📅 [generateAllMonths] Starting with activities.length:', activities.length);
-    console.log('📅 [generateAllMonths] Grouped months:', Object.keys(groupedActivities));
 
     // Only generate months for activities we've actually loaded
     // Don't show empty months for data we haven't fetched yet
     if (activities.length === 0) {
-      console.log('📅 [generateAllMonths] No activities, returning empty array');
       return [];
     }
 
@@ -182,7 +162,6 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
 
     const endDate = new Date(maxDate);
 
-    console.log('📅 [generateAllMonths] Activity range:', startDate.toISOString().split('T')[0], 'to', endDate.toISOString().split('T')[0]);
 
     const allMonths = [];
     const currentDate = new Date(startDate);
@@ -199,7 +178,6 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
       currentDate.setMonth(currentDate.getMonth() + 1);
     }
 
-    console.log('📅 [generateAllMonths] Generated', allMonths.length, 'months');
 
     // Reverse to show most recent first
     return allMonths.reverse();
@@ -452,16 +430,8 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
     }
   };
 
-  console.log('🎨 [ActivityTimeline] RENDER - State:', {
-    loading,
-    initialLoadComplete,
-    activitiesCount: activities.length,
-    hasMore,
-    error: !!error
-  });
 
   if (error) {
-    console.log('❌ [ActivityTimeline] Rendering error message');
     return (
       <div className="activity-timeline">
         <div className="error-message">Failed to load activities: {error}</div>
@@ -471,7 +441,6 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
 
   // Show loading state during initial load - don't render months until we have data
   if (!initialLoadComplete) {
-    console.log('⏳ [ActivityTimeline] Rendering loading state (initialLoadComplete = false)');
     return (
       <div className="activity-timeline">
         <div className="timeline-header">
@@ -482,18 +451,14 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
     );
   }
 
-  console.log('📊 [ActivityTimeline] Initial load complete - processing activities');
   const groupedActivities = groupActivitiesByMonth();
-  console.log('📊 [ActivityTimeline] Grouped activities:', Object.keys(groupedActivities).length, 'months');
 
   const allMonths = generateAllMonths(groupedActivities);
-  console.log('📊 [ActivityTimeline] Generated months:', allMonths.length, 'months');
-  console.log('📊 [ActivityTimeline] Month details:', allMonths.map(m => ({ month: m.key, isEmpty: m.isEmpty, count: m.activities.length })));
 
   // Get platform username (prefer first platform's username)
-  const platformUsername = platforms.length > 0 ? platforms[0].platform_username : (user?.username || 'User');
+  const selectedAccount = platformFilter !== 'all' ? platforms.find(p => p.id === platformFilter) : null;
+  const platformUsername = selectedAccount ? selectedAccount.platform_username : platforms.length > 0 ? platforms[0].platform_username : (user?.username || 'User');
 
-  console.log('✅ [ActivityTimeline] Rendering timeline with', allMonths.length, 'months');
 
   return (
     <div className="activity-timeline">
