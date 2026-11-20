@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
 import apiClient from '../api/client';
+import { useToast } from '../context/ToastContext';
+import ConfirmDialog from './ConfirmDialog';
 import PlatformIcon from './PlatformIcon';
 import './SyncJobsViewer.css';
 
 function SyncJobsViewer() {
+    const { error: showError } = useToast();
+    const [dialog, setDialog] = useState(null);
     const [jobs, setJobs] = useState([]);
     const [platforms, setPlatforms] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -37,25 +41,30 @@ function SyncJobsViewer() {
 
         try {
             await apiClient.cancelSyncJob(jobId);
-            await loadJobs(); // Refresh the list
         } catch (err) {
             console.error('Failed to cancel sync job:', err);
-            alert('Failed to cancel sync job');
+            showError(err.message || 'Failed to cancel sync job');
         }
+        await loadJobs(); // Refresh the list
     };
 
-    const handleDeleteJob = async (jobId) => {
-        if (!confirm('Are you sure you want to delete this sync job?')) {
-            return;
-        }
-
-        try {
-            await apiClient.deleteSyncJob(jobId);
-            await loadJobs(); // Refresh the list
-        } catch (err) {
-            console.error('Failed to delete sync job:', err);
-            alert('Failed to delete sync job');
-        }
+    const handleDeleteJob = (jobId) => {
+        setDialog({
+            title: 'Delete sync job',
+            message: 'Are you sure you want to delete this sync job?',
+            confirmLabel: 'Delete',
+            danger: true,
+            onConfirm: async () => {
+                setDialog(null);
+                try {
+                    await apiClient.deleteSyncJob(jobId);
+                } catch (err) {
+                    console.error('Failed to delete sync job:', err);
+                    showError(err.message || 'Failed to delete sync job');
+                }
+                await loadJobs(); // Refresh the list
+            },
+        });
     };
 
     useEffect(() => {
@@ -321,6 +330,7 @@ function SyncJobsViewer() {
                     })}
                 </div>
             )}
+            {dialog && <ConfirmDialog {...dialog} onCancel={() => setDialog(null)} />}
         </div>
     );
 }
