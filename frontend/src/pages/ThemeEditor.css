@@ -284,3 +284,19 @@ transition: all 0.2s;
     width: 100%;
   }
 }
+/* Radios and checkboxes: neutralise global `.form-group input` styles from other pages */
+.theme-form .form-group .radio-option input[type="radio"],
+.theme-form .checkbox-option input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  min-width: 18px;
+  padding: 0;
+  margin: 0;
+  flex: none;
+  accent-color: var(--primary-color);
+}
+
+.theme-form .radio-option span,
+.theme-form .checkbox-option span {
+  flex: 0 1 auto;
+}
