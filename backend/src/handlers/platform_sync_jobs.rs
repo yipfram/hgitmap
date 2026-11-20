@@ -206,6 +206,7 @@ pub async fn get_sync_job_status(
         completed_at: Option<String>,
         error_message: Option<String>,
         retry_count: i32,
+        max_retries: i32,
         contributions_synced: Option<i32>,
         activities_synced: Option<i32>,
     }
@@ -218,6 +219,7 @@ pub async fn get_sync_job_status(
         completed_at: job.completed_at.map(|t| t.to_rfc3339()),
         error_message: job.error_message,
         retry_count: job.retry_count,
+        max_retries: job.max_retries,
         contributions_synced: job.contributions_synced,
         activities_synced: job.activities_synced,
     }))
@@ -282,6 +284,7 @@ pub async fn list_sync_jobs(
         completed_at: Option<String>,
         error_message: Option<String>,
         retry_count: i32,
+        max_retries: i32,
         contributions_synced: Option<i32>,
         activities_synced: Option<i32>,
         years_completed: Option<i32>,
@@ -304,6 +307,7 @@ pub async fn list_sync_jobs(
             completed_at: job.completed_at.map(|t| t.to_rfc3339()),
             error_message: job.error_message,
             retry_count: job.retry_count,
+            max_retries: job.max_retries,
             contributions_synced: job.contributions_synced,
             activities_synced: job.activities_synced,
             years_completed: job.years_completed,
