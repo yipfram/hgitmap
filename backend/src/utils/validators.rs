@@ -128,6 +128,17 @@ pub async fn ensure_public_instance_url(url_str: &str) -> Result<()> {
     Ok(())
 }
 
+/// Theme slugs: lowercase letters, digits and hyphens, no leading/trailing hyphen, max 100 chars.
+pub fn is_valid_slug(slug: &str) -> bool {
+    !slug.is_empty()
+        && slug.len() <= 100
+        && !slug.starts_with('-')
+        && !slug.ends_with('-')
+        && slug
+            .chars()
+            .all(|c| c.is_ascii_lowercase() || c.is_ascii_digit() || c == '-')
+}
+
 /// Heatmap file names: `<slug>.<svg|png|jpg|jpeg|webp>`, no path separators.
 pub fn is_safe_heatmap_filename(name: &str) -> bool {
     let Some((stem, ext)) = name.rsplit_once('.') else { return false };
@@ -172,6 +183,16 @@ mod tests {
         assert!(validate_username("").is_err());
         assert!(validate_username(&"a".repeat(40)).is_err());
         assert!(validate_username("user@example").is_err());
+    }
+
+    #[test]
+    fn test_is_valid_slug() {
+        assert!(is_valid_slug("my-theme-2"));
+        assert!(!is_valid_slug(""));
+        assert!(!is_valid_slug("Bad Slug!"));
+        assert!(!is_valid_slug("bad-slug-"));
+        assert!(!is_valid_slug("-bad"));
+        assert!(!is_valid_slug("Upper"));
     }
 
     #[test]

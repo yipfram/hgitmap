@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom';
 import apiClient from '../api/client';
 import ColorSchemePicker from '../components/ColorSchemePicker';
 import HeatmapPreview from '../components/HeatmapPreview';
+import { slugify, isValidSlug, SLUG_HINT } from '../utils/slug';
 import './ThemeEditor.css';
 
 const FORMATS = ['svg', 'png', 'jpeg', 'webp'];
@@ -16,6 +17,7 @@ function ThemeEditor() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [availableFonts, setAvailableFonts] = useState([]);
+  const [slugTouched, setSlugTouched] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -148,6 +150,21 @@ function ThemeEditor() {
     }
   };
 
+  const handleNameChange = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      name: value,
+      slug: isEditing || slugTouched ? prev.slug : slugify(value),
+    }));
+  };
+
+  const handleSlugChange = (value) => {
+    setSlugTouched(true);
+    setFormData(prev => ({ ...prev, slug: value }));
+  };
+
+  const slugInvalid = !isEditing && formData.slug !== '' && !isValidSlug(formData.slug);
+
   const handleChange = (field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
@@ -226,7 +243,7 @@ function ThemeEditor() {
             <input
               type="text"
               value={formData.name}
-              onChange={(e) => handleChange('name', e.target.value)}
+              onChange={(e) => handleNameChange(e.target.value)}
               required
               placeholder="My Awesome Theme"
             />
@@ -237,11 +254,14 @@ function ThemeEditor() {
             <input
               type="text"
               value={formData.slug}
-              onChange={(e) => handleChange('slug', e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '-'))}
+              onChange={(e) => handleSlugChange(e.target.value)}
               required
               disabled={isEditing}
               placeholder="my-awesome-theme"
+              aria-invalid={slugInvalid}
+              aria-describedby={slugInvalid ? 'slug-error' : undefined}
             />
+            {slugInvalid && <p id="slug-error" className="field-error" role="alert">{SLUG_HINT}</p>}
             {isEditing && <p className="hint-text">Slug cannot be changed after creation</p>}
           </div>
 

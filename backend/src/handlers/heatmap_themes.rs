@@ -163,6 +163,9 @@ pub struct CreateThemeRequest {
     pub output_formats: Option<Vec<String>>,
 }
 
+const SLUG_ERROR: &str =
+    "Invalid slug: use lowercase letters, digits and hyphens only, without a leading or trailing hyphen";
+
 fn bad_request(message: &str) -> HttpResponse {
     HttpResponse::BadRequest().json(serde_json::json!({ "error": message }))
 }
@@ -290,6 +293,10 @@ pub async fn create_theme(
 ) -> Result<impl Responder, actix_web::Error> {
     let user_id = Uuid::parse_str(&user_claims.sub)
         .map_err(|e| actix_web::error::ErrorBadRequest(format!("Invalid user ID: {}", e)))?;
+
+    if !crate::utils::validators::is_valid_slug(&payload.slug) {
+        return Ok(bad_request(SLUG_ERROR));
+    }
 
     // Check if slug already exists for this user
     let existing = heatmap_theme::Entity::find()
@@ -713,6 +720,10 @@ pub async fn duplicate_theme(
         Some(t) => t,
         None => return Err(actix_web::error::ErrorNotFound("Source theme not found")),
     };
+
+    if !crate::utils::validators::is_valid_slug(&payload.new_slug) {
+        return Ok(bad_request(SLUG_ERROR));
+    }
 
     // Check if new slug already exists
     let existing = heatmap_theme::Entity::find()
