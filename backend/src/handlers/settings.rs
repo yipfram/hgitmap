@@ -47,7 +47,7 @@ pub async fn get_settings(
             // Return default settings if not found
             Ok(HttpResponse::Ok().json(UserSettingsResponse {
                 show_private_contributions: true,
-                hide_private_repo_names: false,
+                hide_private_repo_names: true,
                 updated_at: chrono::Utc::now().to_rfc3339(),
             }))
         }
@@ -101,7 +101,7 @@ pub async fn update_settings(
             show_private_contributions: Set(payload
                 .show_private_contributions
                 .unwrap_or(true)),
-            hide_private_repo_names: Set(payload.hide_private_repo_names.unwrap_or(false)),
+            hide_private_repo_names: Set(payload.hide_private_repo_names.unwrap_or(true)),
             heatmap_color_scheme: Set("github".to_string()),
             heatmap_size: Set("medium".to_string()),
             dark_mode_enabled: Set(false),

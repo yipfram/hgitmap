@@ -390,7 +390,7 @@ async fn find_or_create_user(
         id: Set(Uuid::new_v4()),
         user_id: Set(created.id),
         show_private_contributions: Set(true),
-        hide_private_repo_names: Set(false),
+        hide_private_repo_names: Set(true),
         heatmap_color_scheme: Set("green".to_string()),
         heatmap_size: Set("medium".to_string()),
         dark_mode_enabled: Set(false),
