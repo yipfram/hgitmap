@@ -291,7 +291,7 @@ function SyncJobsViewer() {
 
                                     {job.retry_count > 0 && (
                                         <div className="job-retry">
-                                            Retry attempt {job.retry_count}/{job.max_retries}
+                                            Retry attempt {job.retry_count}{job.max_retries ? `/${job.max_retries}` : ""}
                                         </div>
                                     )}
                                 </div>
