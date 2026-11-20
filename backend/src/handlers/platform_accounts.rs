@@ -143,7 +143,7 @@ pub async fn connect_platform(
                 .await
                 .map_err(|e| {
                     log::error!("Failed to validate GitHub token: {}", e);
-                    actix_web::error::ErrorUnauthorized(format!("Invalid access token: {}", e))
+                    actix_web::error::ErrorBadRequest(format!("Invalid access token: {}", e))
                 })?
         }
         "gitea" => {
@@ -153,7 +153,7 @@ pub async fn connect_platform(
                 .await
                 .map_err(|e| {
                     log::error!("Failed to validate Gitea token: {}", e);
-                    actix_web::error::ErrorUnauthorized(format!("Invalid access token: {}", e))
+                    actix_web::error::ErrorBadRequest(format!("Invalid access token: {}", e))
                 })?
         }
         "gitlab" => {
@@ -163,7 +163,7 @@ pub async fn connect_platform(
                 .await
                 .map_err(|e| {
                     log::error!("Failed to validate GitLab token: {}", e);
-                    actix_web::error::ErrorUnauthorized(format!("Invalid access token: {}", e))
+                    actix_web::error::ErrorBadRequest(format!("Invalid access token: {}", e))
                 })?
         }
         _ => {
@@ -603,7 +603,7 @@ pub async fn update_platform_token(
                 .await
                 .map_err(|e| {
                     log::error!("Failed to validate GitHub token: {}", e);
-                    actix_web::error::ErrorUnauthorized(format!("Invalid access token: {}", e))
+                    actix_web::error::ErrorBadRequest(format!("Invalid access token: {}", e))
                 })?
         }
         git_platform_account::GitPlatform::Gitea => {
@@ -613,7 +613,7 @@ pub async fn update_platform_token(
                 .await
                 .map_err(|e| {
                     log::error!("Failed to validate Gitea token: {}", e);
-                    actix_web::error::ErrorUnauthorized(format!("Invalid access token: {}", e))
+                    actix_web::error::ErrorBadRequest(format!("Invalid access token: {}", e))
                 })?
         }
         git_platform_account::GitPlatform::GitLab => {
@@ -623,7 +623,7 @@ pub async fn update_platform_token(
                 .await
                 .map_err(|e| {
                     log::error!("Failed to validate GitLab token: {}", e);
-                    actix_web::error::ErrorUnauthorized(format!("Invalid access token: {}", e))
+                    actix_web::error::ErrorBadRequest(format!("Invalid access token: {}", e))
                 })?
         }
     };
