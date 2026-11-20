@@ -13,7 +13,12 @@ async function parseBody(response) {
 
 function errorMessage(data, response, fallback) {
   if (data && typeof data === 'object' && data.error) return data.error;
-  if (typeof data === 'string' && data.trim()) return data.trim();
+  if (typeof data === 'string') {
+    const body = data.trim();
+    // Never surface HTML error pages or huge bodies (e.g. a proxy 502) to the user
+    if (body && !body.startsWith('<') && body.length <= 300) return body;
+    return `Server error (${response.status})`;
+  }
   return response.statusText || fallback;
 }
 
