@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation, Link, Navigate } from 'react-router-dom';
 import apiClient from '../api/client';
 import useAuthConfig from '../hooks/useAuthConfig';
 import { useAuth } from '../context/AuthContext';
@@ -14,8 +14,13 @@ const Login = () => {
   const [error, setError] = useState(searchParams.get('error') || '');
   const authConfig = useAuthConfig();
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const { user, login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const fromState = location.state?.from;
+  const from = fromState?.pathname && fromState.pathname.startsWith('/') && !fromState.pathname.startsWith('//')
+    ? `${fromState.pathname}${fromState.search || ''}${fromState.hash || ''}`
+    : null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -24,13 +29,17 @@ const Login = () => {
 
     try {
       const data = await login(username, password);
-      navigate(`/${data.username}`);
+      navigate(from || `/${data.username}`, { replace: true });
     } catch (err) {
       setError(err.message);
     } finally {
       setLoading(false);
     }
   };
+
+  if (user) {
+    return <Navigate to={from || `/${user.username}`} replace />;
+  }
 
   return (
     <div className="auth-container">

@@ -13,7 +13,7 @@ const Register = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const { register } = useAuth();
+  const { user, register } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -41,6 +41,10 @@ const Register = () => {
       setLoading(false);
     }
   };
+
+  if (user) {
+    return <Navigate to={`/${user.username}`} replace />;
+  }
 
   if (authConfig.loaded && !authConfig.password_login) {
     return <Navigate to="/login" replace />;
