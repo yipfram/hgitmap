@@ -1,6 +1,19 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import apiClient from '../api/client';
 import './Heatmap.css';
+
+const formatLocalDate = (date) => {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  return `${y}-${m}-${d}`;
+};
+
+// Parse 'YYYY-MM-DD' as a local date (new Date(str) would parse it as UTC)
+const parseLocalDate = (str) => {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
 
 function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, isPublic = false }) {
   const [contributions, setContributions] = useState([]);
@@ -10,6 +23,10 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
   const [viewMode, setViewMode] = useState('rolling'); // 'rolling' or 'year'
   const [year, setYear] = useState(new Date().getFullYear());
   const [platforms, setPlatforms] = useState([]);
+  const [activeDate, setActiveDate] = useState(null); // roving tab stop
+  const [tooltip, setTooltip] = useState(null); // { text, x, y }
+  const wrapperRef = useRef(null);
+  const gridRef = useRef(null);
 
   // Load available platforms on mount (only for authenticated users viewing their own profile)
   useEffect(() => {
@@ -49,25 +66,14 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
           from.setDate(from.getDate() - dayOfWeek); // Go back to Sunday
         }
 
-        // Format in local timezone to avoid UTC conversion issues
-        const formatLocalDate = (date) => {
-          const year = date.getFullYear();
-          const month = String(date.getMonth() + 1).padStart(2, '0');
-          const day = String(date.getDate()).padStart(2, '0');
-          return `${year}-${month}-${day}`;
-        };
-
         fromDate = formatLocalDate(from);
         toDate = formatLocalDate(today);
 
-        console.log(`📅 [loadData] Rolling mode: 365-day window starts ${formatLocalDate(windowStart)}`);
-        console.log(`📅 [loadData] Fetching from Sunday ${fromDate} to ${toDate}`);
       } else {
         // Calendar year mode: Jan 1 to Dec 31 of selected year
         fromDate = `${year}-01-01`;
         toDate = `${year}-12-31`;
 
-        console.log(`📅 [loadData] Year mode: ${fromDate} to ${toDate} (year ${year})`);
       }
 
       // Use public or authenticated API based on isPublic flag
@@ -80,9 +86,6 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
           : apiClient.getContributionStats(),
       ]);
 
-      console.log(`📊 [loadData] Received ${contributionsData.contributions?.length || 0} contribution days`);
-      console.log(`📊 [loadData] First 5 dates:`, contributionsData.contributions?.slice(0, 5).map(c => c.date));
-      console.log(`📊 [loadData] Last 5 dates:`, contributionsData.contributions?.slice(-5).map(c => c.date));
 
       setContributions(contributionsData.contributions || []);
       setStats(statsData);
@@ -97,41 +100,33 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
     loadData();
   }, [loadData]);
 
+  // Show the most recent weeks first (matters on narrow screens)
+  useEffect(() => {
+    if (!loading && wrapperRef.current) {
+      wrapperRef.current.scrollLeft = wrapperRef.current.scrollWidth;
+    }
+  }, [loading, viewMode, year, contributions]);
+
   const getWeeksInYear = () => {
     const weeks = [];
     let startDate, endDate, windowStart;
 
     if (viewMode === 'rolling') {
-      // Rolling 365 days mode (364 days back + today = 365 days total)
+      // Rolling 365 days (364 days back + today)
       const today = new Date();
       today.setHours(23, 59, 59, 999);
 
-      // The actual 365-day window starts here
-      const actualWindowStart = new Date(today);
-      actualWindowStart.setDate(actualWindowStart.getDate() - 364);
-      actualWindowStart.setHours(0, 0, 0, 0);
-      windowStart = actualWindowStart;
+      windowStart = new Date(today);
+      windowStart.setDate(windowStart.getDate() - 364);
+      windowStart.setHours(0, 0, 0, 0);
 
-      // But we fetch from the Sunday before to complete the first week
-      const dayOfWeek = actualWindowStart.getDay();
-      const from = new Date(actualWindowStart);
-      if (dayOfWeek !== 0) {
-        from.setDate(from.getDate() - dayOfWeek);
-      }
-      from.setHours(0, 0, 0, 0);
-
-      startDate = from;
+      // The grid starts on the Sunday before the window; days before the
+      // window start are rendered as empty cells.
+      startDate = new Date(windowStart);
       endDate = today;
-
-      console.log('=== Heatmap Date Range Debug (Rolling Mode) ===');
-      console.log('365-day window starts:', windowStart.toDateString());
-      console.log('Fetch from Sunday:', startDate.toDateString());
-      console.log('End Date (today):', endDate.toDateString());
     } else {
-      // Calendar year mode
       startDate = new Date(year, 0, 1);
-      startDate.setHours(0, 0, 0, 0);
-      windowStart = startDate; // In year mode, window start = fetch start
+      windowStart = startDate;
 
       const today = new Date();
       today.setHours(23, 59, 59, 999);
@@ -141,91 +136,38 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
       if (year === today.getFullYear()) {
         endDate = today;
       }
-
-      console.log('=== Heatmap Date Range Debug (Year Mode) ===');
-      console.log('Year:', year);
-      console.log('Start Date (Jan 1):', startDate.toDateString());
-      console.log('End Date:', endDate.toDateString());
-      console.log('Jan 1 is a:', ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][startDate.getDay()]);
     }
 
-    // Start from the Sunday of the week containing January 1st
-    let currentDate = new Date(startDate);
-    const startDay = startDate.getDay(); // 0 = Sunday, 6 = Saturday
+    const countsByDate = new Map(contributions.map((c) => [c.date, c.count]));
 
-    // Go back to the Sunday of the first week
-    if (startDay !== 0) {
-      currentDate.setDate(currentDate.getDate() - startDay);
-    }
+    const currentDate = new Date(startDate);
+    currentDate.setDate(currentDate.getDate() - startDate.getDay()); // back to Sunday
 
-    console.log('First Sunday:', currentDate.toDateString());
-
-    let weekIndex = 0;
     while (currentDate <= endDate) {
       const week = [];
       for (let i = 0; i < 7; i++) {
         const date = new Date(currentDate);
         date.setDate(date.getDate() + i);
-        date.setHours(0, 0, 0, 0); // Normalize to midnight for comparison
+        date.setHours(0, 0, 0, 0);
 
-        // Format date in local timezone (not UTC) to avoid timezone offset issues
-        const dateYear = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const dateStr = `${dateYear}-${month}-${day}`;
-        const contribution = contributions.find((c) => c.date === dateStr);
-        const count = contribution ? contribution.count : 0;
-
-        // Determine if we should show this day based on view mode
-        let shouldInclude;
-        if (viewMode === 'rolling') {
-          // Rolling mode: show all dates from startDate (Sunday) to endDate (today)
-          // This includes dates before the 365-day window (they'll show as empty)
-          shouldInclude = date >= startDate && date <= endDate;
-        } else {
-          // Year mode: show only dates in the selected year AND between startDate and endDate
-          shouldInclude = dateYear === year && date >= startDate && date <= endDate;
-        }
-
-        // Debug first week
-        if (weekIndex === 0) {
-          const inWindow = viewMode === 'rolling' ? date >= windowStart : true;
-          console.log(`Day ${i}:`, date.toDateString(),
-            '-> dateStr:', dateStr,
-            '| Mode:', viewMode,
-            '| >= Start?', date >= startDate,
-            '| <= End?', date <= endDate,
-            '| In window?', inWindow,
-            '| Should include?', shouldInclude);
-        }
+        const dateStr = formatLocalDate(date);
+        const shouldInclude =
+          date >= windowStart && date <= endDate && (viewMode === 'rolling' || date.getFullYear() === year);
 
         if (shouldInclude) {
           week.push({
             date: dateStr,
-            count,
+            count: countsByDate.get(dateStr) || 0,
             month: date.getMonth(),
             day: date.getDay(),
           });
         } else {
-          week.push(null); // Empty cell for days outside the date range
+          week.push(null); // Empty cell outside the displayed range
         }
       }
       weeks.push(week);
       currentDate.setDate(currentDate.getDate() + 7);
-      weekIndex++;
     }
-
-    console.log('Total weeks:', weeks.length);
-    console.log('First week contents:', weeks[0]);
-    console.log('First week days:');
-    weeks[0].forEach((day, i) => {
-      if (day) {
-        console.log(`  [${i}] ${day.date} - count: ${day.count}`);
-      } else {
-        console.log(`  [${i}] NULL (empty cell)`);
-      }
-    });
-    console.log('================================');
 
     return weeks;
   };
@@ -248,9 +190,6 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
     const q2 = max * 0.50;
     const q3 = max * 0.75;
 
-    console.log('📊 [Quartiles] Non-zero days:', nonZeroCounts.length, '| Max:', max);
-    console.log('📊 [Quartiles] Q1:', q1, '| Q2:', q2, '| Q3:', q3);
-    console.log('📊 [Quartiles] Using range-based quartiles: [0, max] divided into 4 parts');
 
     return { q1, q2, q3, max };
   };
@@ -286,6 +225,31 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
     const day = date.getDate();
     const suffix = getOrdinalSuffix(day);
     return `${month} ${day}${suffix}`;
+  };
+
+  const formatAriaDate = (date) =>
+    date.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+  const showTooltip = (el, text) => {
+    const rect = el.getBoundingClientRect();
+    setTooltip({ text, x: rect.left + rect.width / 2, y: rect.top });
+  };
+
+  // Arrow-key navigation between cells (roving tabindex)
+  const handleCellKeyDown = (e, weekIndex, dayIndex) => {
+    if (e.key === 'Escape') {
+      setTooltip(null);
+      return;
+    }
+    const delta = {
+      ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1],
+    }[e.key];
+    if (!delta) return;
+    e.preventDefault();
+    const target = gridRef.current?.querySelector(
+      `[data-w="${weekIndex + delta[0]}"][data-d="${dayIndex + delta[1]}"]:not(.empty)`
+    );
+    if (target) target.focus();
   };
 
   const getMonthLabels = (weeks) => {
@@ -326,16 +290,15 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
 
   const weeks = getWeeksInYear();
   const monthLabels = getMonthLabels(weeks);
-  const totalContributions = contributions.reduce((sum, c) => sum + c.count, 0);
+  // Only days actually displayed count (excludes days before the 365-day window)
+  const visibleDays = weeks.flat().filter(Boolean);
+  const totalContributions = visibleDays.reduce((sum, c) => sum + c.count, 0);
+  const tabStopDate = activeDate && visibleDays.some((d) => d.date === activeDate)
+    ? activeDate
+    : visibleDays[visibleDays.length - 1]?.date;
 
   // Calculate quartiles for dynamic color intensity (GitHub-style)
-  const quartiles = calculateQuartiles(contributions);
-
-  console.log('📊 Total contributions calculation:');
-  console.log('  - Contribution days:', contributions.length);
-  console.log('  - Total count:', totalContributions);
-  console.log('  - View mode:', viewMode);
-  console.log('📊 Quartiles:', quartiles);
+  const quartiles = calculateQuartiles(visibleDays);
 
   const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -352,7 +315,7 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
           </div>
 
           {/* Heatmap Grid */}
-          <div className="heatmap-wrapper">
+          <div className="heatmap-wrapper" ref={wrapperRef}>
             <div className="heatmap-months">
               {monthLabels.map((label, index) => (
                 <div
@@ -376,25 +339,26 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
                 <div className="day-label"></div>
               </div>
 
-              <div className="heatmap-grid">
+              <div
+                className="heatmap-grid"
+                ref={gridRef}
+                role="group"
+                aria-label={`Contribution calendar: ${totalContributions.toLocaleString()} contributions ${viewMode === 'rolling' ? 'in the last year' : `in ${year}`}. Use arrow keys to move between days.`}
+              >
                 {weeks.map((week, weekIndex) => (
                   <div key={weekIndex} className="heatmap-week">
                     {week.map((day, dayIndex) => {
-                      // Debug rendering for first week
-                      if (weekIndex === 0) {
-                        console.log(`[RENDER] Week 0, Day ${dayIndex}:`, day === null ? 'NULL' : `date=${day.date}, count=${day.count}`);
-                      }
-
                       if (!day) {
-                        return <div key={dayIndex} className="heatmap-day empty"></div>;
+                        return <div key={dayIndex} className="heatmap-day empty" aria-hidden="true"></div>;
                       }
 
                       const level = getIntensityLevel(day.count, quartiles);
-                      const date = new Date(day.date);
+                      const date = parseLocalDate(day.date);
                       const tooltipDate = formatTooltipDate(date);
                       const tooltipText = day.count === 0
                         ? `No contributions on ${tooltipDate}.`
                         : `${day.count} contribution${day.count === 1 ? '' : 's'} on ${tooltipDate}.`;
+                      const ariaLabel = `${day.count === 0 ? 'No' : day.count} contribution${day.count === 1 ? '' : 's'} on ${formatAriaDate(date)}`;
 
                       return (
                         <div
@@ -402,7 +366,20 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
                           className={`heatmap-day level-${level}`}
                           data-count={day.count}
                           data-date={tooltipDate}
-                          title={tooltipText}
+                          data-w={weekIndex}
+                          data-d={dayIndex}
+                          role="img"
+                          aria-label={ariaLabel}
+                          tabIndex={day.date === tabStopDate ? 0 : -1}
+                          onMouseEnter={(e) => showTooltip(e.currentTarget, tooltipText)}
+                          onMouseLeave={() => setTooltip(null)}
+                          onFocus={(e) => {
+                            setActiveDate(day.date);
+                            showTooltip(e.currentTarget, tooltipText);
+                          }}
+                          onBlur={() => setTooltip(null)}
+                          onClick={(e) => showTooltip(e.currentTarget, tooltipText)}
+                          onKeyDown={(e) => handleCellKeyDown(e, weekIndex, dayIndex)}
                         ></div>
                       );
                     })}
@@ -422,6 +399,16 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
               <span className="legend-label">More</span>
             </div>
           </div>
+
+          {tooltip && (
+            <div
+              className="heatmap-tooltip"
+              role="tooltip"
+              style={{ left: tooltip.x, top: tooltip.y }}
+            >
+              {tooltip.text}
+            </div>
+          )}
 
           {contributions.length === 0 && (
             <div className="no-contributions-message">
@@ -458,6 +445,7 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
 
           <button
             className={`year-item ${viewMode === 'rolling' ? 'active' : ''}`}
+            aria-pressed={viewMode === 'rolling'}
             onClick={() => {
               setViewMode('rolling');
               setYear(new Date().getFullYear());
@@ -471,6 +459,7 @@ function Heatmap({ platformFilter = 'all', setPlatformFilter, username = null, i
               <button
                 key={y}
                 className={`year-item ${viewMode === 'year' && year === y ? 'active' : ''}`}
+                aria-pressed={viewMode === 'year' && year === y}
                 onClick={() => {
                   setViewMode('year');
                   setYear(y);
