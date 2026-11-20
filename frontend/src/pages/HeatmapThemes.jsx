@@ -213,6 +213,7 @@ function HeatmapThemes() {
                   className="btn-icon"
                   onClick={() => navigate(`/settings/themes/${theme.slug}/edit`)}
                   title="Edit theme"
+                  aria-label="Edit theme"
                 >
                   <FiEdit />
                 </button>
@@ -220,6 +221,7 @@ function HeatmapThemes() {
                   className="btn-icon"
                   onClick={() => handleDuplicate(theme.slug, theme.name)}
                   title="Duplicate theme"
+                  aria-label="Duplicate theme"
                 >
                   <FiCopy />
                 </button>
@@ -227,6 +229,7 @@ function HeatmapThemes() {
                   className="btn-icon"
                   onClick={() => handleGenerate(theme)}
                   title="Generate heatmap"
+                  aria-label="Generate heatmap"
                 >
                   <FiRefreshCw />
                 </button>
@@ -235,6 +238,7 @@ function HeatmapThemes() {
                     className="btn-icon"
                     onClick={() => handleSetDefault(theme.slug)}
                     title="Set as default"
+                    aria-label="Set as default"
                   >
                     <FiStar />
                   </button>
@@ -244,6 +248,7 @@ function HeatmapThemes() {
                     className="btn-icon btn-danger"
                     onClick={() => handleDelete(theme.slug, theme.name)}
                     title="Delete theme"
+                    aria-label="Delete theme"
                   >
                     <FiTrash2 />
                   </button>
