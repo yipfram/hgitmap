@@ -1,0 +1,94 @@
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(1, 4, 9, 0.6);
+}
+
+.dialog {
+  width: 100%;
+  max-width: 440px;
+  padding: 1.5rem;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+}
+
+.dialog-title {
+  margin: 0 0 0.75rem;
+  font-size: 1.15rem;
+  color: var(--text-primary);
+}
+
+.dialog-message {
+  margin: 0 0 1rem;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.dialog-field label {
+  display: block;
+  margin-bottom: 0.4rem;
+  font-weight: 500;
+}
+
+.dialog-field input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.dialog-field input[aria-invalid="true"] {
+  border-color: var(--danger-emphasis);
+}
+
+.dialog-error {
+  margin-top: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--danger-fg);
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.dialog-btn {
+  padding: 0.5rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.dialog-btn:focus-visible,
+.dialog-field input:focus-visible {
+  outline: 2px solid var(--accent-primary);
+  outline-offset: 2px;
+}
+
+.dialog-btn-primary {
+  background: var(--button-primary-bg);
+  border-color: transparent;
+  color: var(--button-primary-text);
+}
+
+.dialog-btn-danger {
+  background: var(--danger-emphasis);
+  border-color: transparent;
+  color: #fff;
+}

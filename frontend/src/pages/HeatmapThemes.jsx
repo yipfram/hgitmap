@@ -2,10 +2,15 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FiEdit, FiCopy, FiRefreshCw, FiStar, FiTrash2 } from 'react-icons/fi';
 import apiClient from '../api/client';
+import ConfirmDialog from '../components/ConfirmDialog';
+import { useToast } from '../context/ToastContext';
+import { slugify } from '../utils/slug';
 import './HeatmapThemes.css';
 
 function HeatmapThemes() {
   const navigate = useNavigate();
+  const toast = useToast();
+  const [dialog, setDialog] = useState(null);
   const [themes, setThemes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -39,17 +44,23 @@ function HeatmapThemes() {
     }
   };
 
-  const handleDelete = async (slug, themeName) => {
-    if (!window.confirm(`Are you sure you want to delete theme "${themeName}"?`)) {
-      return;
-    }
-
-    try {
-      await apiClient.deleteTheme(slug);
-      await loadThemes();
-    } catch (err) {
-      alert(`Failed to delete theme: ${err.message}`);
-    }
+  const handleDelete = (slug, themeName) => {
+    setDialog({
+      title: 'Delete theme',
+      message: `Are you sure you want to delete theme "${themeName}"? This cannot be undone.`,
+      confirmLabel: 'Delete',
+      danger: true,
+      onConfirm: async () => {
+        setDialog(null);
+        try {
+          await apiClient.deleteTheme(slug);
+          await loadThemes();
+          toast.success(`Theme "${themeName}" deleted`);
+        } catch (err) {
+          toast.error(`Failed to delete theme: ${err.message}`);
+        }
+      },
+    });
   };
 
   const handleSetDefault = async (slug) => {
@@ -57,38 +68,46 @@ function HeatmapThemes() {
       await apiClient.setDefaultTheme(slug);
       await loadThemes();
     } catch (err) {
-      alert(`Failed to set default theme: ${err.message}`);
+      toast.error(`Failed to set default theme: ${err.message}`);
     }
   };
 
-  const handleGenerate = async (slug) => {
-    try {
-      await apiClient.triggerThemeGeneration(slug);
-      alert('Heatmap generation started! Check the generation jobs for status.');
-    } catch (err) {
-      alert(`Failed to trigger generation: ${err.message}`);
-    }
-  };
-
-  const handleDuplicate = async (slug, themeName) => {
-    const newName = prompt(`Enter a name for the duplicated theme:`, `${themeName} (Copy)`);
-    if (!newName) return;
-
-    // Generate slug from name
-    const newSlug = newName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-
-    if (!newSlug) {
-      alert('Invalid theme name');
+  const handleGenerate = async (theme) => {
+    if (!theme.output_formats || theme.output_formats.length === 0) {
+      toast.error('This theme has no output formats. Edit it and select at least one format.');
       return;
     }
-
     try {
-      await apiClient.duplicateTheme(slug, newName, newSlug);
-      await loadThemes();
-      alert(`Theme "${newName}" duplicated successfully!`);
+      await apiClient.triggerThemeGeneration(theme.slug);
+      toast.success('Heatmap generation started! Check the generation jobs for status.');
     } catch (err) {
-      alert(`Failed to duplicate theme: ${err.message}`);
+      toast.error(`Failed to trigger generation: ${err.message}`);
     }
+  };
+
+  const handleDuplicate = (slug, themeName) => {
+    setDialog({
+      title: 'Duplicate theme',
+      inputLabel: 'Name for the duplicated theme',
+      defaultValue: `${themeName} (Copy)`,
+      confirmLabel: 'Duplicate',
+      validate: (value) => {
+        const newSlug = slugify(value);
+        if (!newSlug) return 'Enter a valid theme name';
+        if (themes.some(t => t.slug === newSlug)) return 'A theme with this name already exists';
+        return null;
+      },
+      onConfirm: async (newName) => {
+        setDialog(null);
+        try {
+          await apiClient.duplicateTheme(slug, newName.trim(), slugify(newName));
+          await loadThemes();
+          toast.success(`Theme "${newName.trim()}" duplicated successfully`);
+        } catch (err) {
+          toast.error(`Failed to duplicate theme: ${err.message}`);
+        }
+      },
+    });
   };
 
   const getEmbedUrl = (slug, format) => {
@@ -206,7 +225,7 @@ function HeatmapThemes() {
                 </button>
                 <button
                   className="btn-icon"
-                  onClick={() => handleGenerate(theme.slug)}
+                  onClick={() => handleGenerate(theme)}
                   title="Generate heatmap"
                 >
                   <FiRefreshCw />
@@ -240,8 +259,9 @@ function HeatmapThemes() {
                     <button
                       className="btn-copy"
                       onClick={() => {
-                        navigator.clipboard.writeText(getEmbedUrl(theme.slug, format));
-                        alert('Copied to clipboard!');
+                        navigator.clipboard.writeText(getEmbedUrl(theme.slug, format))
+                          .then(() => toast.success('Copied to clipboard'))
+                          .catch(() => toast.error('Could not copy to clipboard'));
                       }}
                       title="Copy to clipboard"
                     >
@@ -254,6 +274,8 @@ function HeatmapThemes() {
           ))}
         </div>
       )}
+
+      {dialog && <ConfirmDialog {...dialog} onCancel={() => setDialog(null)} />}
     </div>
   );
 }
