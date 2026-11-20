@@ -5,6 +5,8 @@ import PlatformIcon from './PlatformIcon';
 import { FiEdit, FiTrash2, FiArrowLeft } from 'react-icons/fi';
 import './OAuthAppsManager.css';
 
+const platformLabel = (p) => ({ github: 'GitHub', gitlab: 'GitLab', gitea: 'Gitea' }[p] || p);
+
 export default function OAuthAppsManager() {
   const { error: showError, success: showSuccess } = useToast();
   const [apps, setApps] = useState([]);
@@ -31,7 +33,7 @@ export default function OAuthAppsManager() {
     try {
       setLoading(true);
       const data = await apiClient.listOAuthApps();
-      setApps(data);
+      setApps([...data].sort((a, b) => (a.created_at || '').localeCompare(b.created_at || '') || a.id.localeCompare(b.id)));
     } catch (err) {
       showError(err.message || 'Failed to load OAuth apps');
     } finally {
@@ -50,11 +52,22 @@ export default function OAuthAppsManager() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const instanceName = formData.instanceName.trim();
+    const instanceUrl = formData.instanceUrl.trim().replace(/\/+$/, '');
+    if (!instanceName) {
+      showError('Instance name cannot be empty');
+      return;
+    }
+    if (!editingApp && formData.platform !== 'github' && !instanceUrl) {
+      showError(`Instance URL is required for ${platformLabel(formData.platform)}`);
+      return;
+    }
+
     try {
       if (editingApp) {
         // Update existing app
         const updates = {};
-        if (formData.instanceName) updates.instance_name = formData.instanceName;
+        updates.instance_name = instanceName;
         if (formData.clientId) updates.client_id = formData.clientId;
         if (formData.clientSecret) updates.client_secret = formData.clientSecret;
         if (formData.isDefault !== undefined) updates.is_default = formData.isDefault;
@@ -65,8 +78,8 @@ export default function OAuthAppsManager() {
         // Create new app
         await apiClient.createOAuthApp(
           formData.platform,
-          formData.instanceName,
-          formData.instanceUrl,
+          instanceName,
+          formData.platform === 'github' ? '' : instanceUrl,
           formData.clientId,
           formData.clientSecret,
           formData.isDefault
@@ -191,7 +204,7 @@ export default function OAuthAppsManager() {
                       <div className="url-actions-row">
                         <div className="instance-url-display">
                           <span className="instance-url-text">
-                            {app.instance_url || (app.platform === 'github' ? 'https://github.com' : `https://${app.platform}.com`)}
+                            {app.instance_url || (app.platform === 'github' ? 'https://github.com' : 'No instance URL set')}
                           </span>
                         </div>
                         <div className="app-actions">
@@ -201,7 +214,12 @@ export default function OAuthAppsManager() {
                             title="Edit"
                             role="button"
                             tabIndex={0}
-                            onKeyDown={(e) => e.key === 'Enter' && handleEdit(app)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleEdit(app);
+                              }
+                            }}
                             aria-label="Edit OAuth app"
                           >
                             <FiEdit size={18} />
@@ -213,7 +231,12 @@ export default function OAuthAppsManager() {
                             title="Delete"
                             role="button"
                             tabIndex={0}
-                            onKeyDown={(e) => e.key === 'Enter' && handleDelete(app.id)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleDelete(app.id);
+                              }
+                            }}
                             aria-label="Delete OAuth app"
                           >
                             <FiTrash2 size={18} />
@@ -278,11 +301,12 @@ export default function OAuthAppsManager() {
                     name="instanceUrl"
                     value={formData.instanceUrl}
                     onChange={handleInputChange}
-                    placeholder="https://gitlab.example.com"
+                    placeholder={formData.platform === 'gitea' ? 'https://gitea.example.com' : 'https://gitlab.com'}
                     disabled={editingApp !== null}
+                    required={!editingApp}
                   />
                   <small className="form-hint">
-                    Leave empty for official {formData.platform} (gitlab.com, etc.)
+                    Base URL of your {platformLabel(formData.platform)} instance
                   </small>
                   {editingApp && (
                     <small className="form-hint">Instance URL cannot be changed after creation</small>
