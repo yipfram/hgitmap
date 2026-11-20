@@ -163,6 +163,10 @@ pub struct CreateThemeRequest {
     pub output_formats: Option<Vec<String>>,
 }
 
+fn bad_request(message: &str) -> HttpResponse {
+    HttpResponse::BadRequest().json(serde_json::json!({ "error": message }))
+}
+
 fn parse_output_formats(
     formats: &[String],
 ) -> Result<Vec<heatmap_theme::HeatmapFormat>, actix_web::Error> {
@@ -333,6 +337,9 @@ pub async fn create_theme(
 
     // Parse output formats
     let output_formats = if let Some(ref formats) = payload.output_formats {
+        if formats.is_empty() {
+            return Ok(bad_request("At least one output format is required"));
+        }
         parse_output_formats(formats)?
     } else {
         vec![heatmap_theme::HeatmapFormat::Png]
@@ -541,6 +548,9 @@ pub async fn update_theme(
     update_field!(show_watermark, bool);
 
     if let Some(ref formats) = payload.output_formats {
+        if formats.is_empty() {
+            return Ok(bad_request("At least one output format is required"));
+        }
         let parsed_formats = parse_output_formats(formats)?;
         active_theme.output_formats = Set(parsed_formats);
     }
