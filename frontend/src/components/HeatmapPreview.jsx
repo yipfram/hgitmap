@@ -9,6 +9,14 @@ function HeatmapPreview({ theme }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [previewPeriod, setPreviewPeriod] = useState('rolling'); // 'rolling' or specific year
+  const [selectedFormat, setSelectedFormat] = useState('svg');
+
+  const availableFormats = Array.isArray(theme.output_formats) && theme.output_formats.length > 0
+    ? theme.output_formats
+    : ['svg'];
+  const previewOutputFormat = availableFormats.includes(selectedFormat)
+    ? selectedFormat
+    : availableFormats[0];
 
   // Track if theme has changed since last preview generation
   const [themeChanged, setThemeChanged] = useState(false);
@@ -31,18 +39,34 @@ function HeatmapPreview({ theme }) {
     }
   }, [theme, lastGeneratedTheme, showPreview]);
 
-  const handleTogglePreview = async () => {
+  const hidePreview = () => {
+    setShowPreview(false);
+    if (previewImageUrl) {
+      URL.revokeObjectURL(previewImageUrl);
+      setPreviewImageUrl(null);
+    }
+    setPreviewSvg(null);
+  };
+
+  const handleTogglePreview = () => {
     if (showPreview && !themeChanged) {
-      setShowPreview(false);
-      // Clean up image URL if exists
-      if (previewImageUrl) {
-        URL.revokeObjectURL(previewImageUrl);
-        setPreviewImageUrl(null);
-      }
+      hidePreview();
       return;
     }
+    generatePreview(previewPeriod, previewOutputFormat);
+  };
 
-    // Generate preview by calling backend
+  const handlePeriodChange = (value) => {
+    setPreviewPeriod(value);
+    if (showPreview) generatePreview(value, previewOutputFormat);
+  };
+
+  const handleFormatChange = (value) => {
+    setSelectedFormat(value);
+    if (showPreview) generatePreview(previewPeriod, value);
+  };
+
+  const generatePreview = async (period, outputFormat) => {
     setLoading(true);
     setError(null);
 
@@ -52,7 +76,7 @@ function HeatmapPreview({ theme }) {
 
       // Calculate date range based on selected period
       let fromDate, toDate;
-      if (previewPeriod === 'rolling') {
+      if (period === 'rolling') {
         // Last year (rolling 365 days)
         const today = new Date();
         const windowStart = new Date(today);
@@ -76,7 +100,7 @@ function HeatmapPreview({ theme }) {
         toDate = formatLocalDate(today);
       } else {
         // Specific year
-        const year = parseInt(previewPeriod);
+        const year = parseInt(period, 10);
         fromDate = `${year}-01-01`;
         const today = new Date();
         if (year === today.getFullYear()) {
@@ -89,9 +113,6 @@ function HeatmapPreview({ theme }) {
           toDate = `${year}-12-31`;
         }
       }
-
-      // Get the output format (single selection)
-      const outputFormat = theme.output_format || 'svg';
 
       const requestBody = {
         ...theme,
@@ -116,13 +137,19 @@ function HeatmapPreview({ theme }) {
       // Handle different formats
       if (outputFormat === 'svg') {
         const svgText = await response.text();
+        if (previewImageUrl) {
+          URL.revokeObjectURL(previewImageUrl);
+          setPreviewImageUrl(null);
+        }
         setPreviewSvg(svgText);
         setPreviewFormat('svg');
       } else {
         // For PNG, JPEG, WebP - create object URL from blob
         const blob = await response.blob();
+        if (previewImageUrl) URL.revokeObjectURL(previewImageUrl);
         const objectUrl = URL.createObjectURL(blob);
         setPreviewImageUrl(objectUrl);
+        setPreviewSvg(null);
         setPreviewFormat(outputFormat);
       }
 
@@ -147,15 +174,29 @@ function HeatmapPreview({ theme }) {
           <h3>Preview</h3>
           <div className="preview-controls">
             <div className="preview-period-selector">
-              <label>Period:</label>
+              <label htmlFor="preview-period">Period:</label>
               <select
+                id="preview-period"
                 value={previewPeriod}
-                onChange={(e) => setPreviewPeriod(e.target.value)}
+                onChange={(e) => handlePeriodChange(e.target.value)}
                 className="period-select"
               >
                 <option value="rolling">Last year</option>
                 {years.map(year => (
                   <option key={year} value={year}>{year}</option>
+                ))}
+              </select>
+            </div>
+            <div className="preview-period-selector">
+              <label htmlFor="preview-format">Format:</label>
+              <select
+                id="preview-format"
+                value={previewOutputFormat}
+                onChange={(e) => handleFormatChange(e.target.value)}
+                className="period-select"
+              >
+                {availableFormats.map(f => (
+                  <option key={f} value={f}>{f.toUpperCase()}</option>
                 ))}
               </select>
             </div>
