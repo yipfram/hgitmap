@@ -11,13 +11,17 @@ const Landing = () => {
     const monthLabels = [];
     let lastMonth = -1;
 
-    for (let weekIndex = 0; weekIndex < 40; weekIndex++) {
+    for (let weekIndex = 0; weekIndex < 53; weekIndex++) {
       const week = [];
       for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
         // Use deterministic pattern based on position
-        const level = (weekIndex + dayIndex * 2) % 5;
+        // pseudo-random but deterministic, with quieter weekends
+        const n = (weekIndex * 7 + dayIndex) * 2654435761 % 1000 / 1000;
+        const quiet = dayIndex === 0 || dayIndex === 6;
+        const r = quiet ? n * 0.6 : n;
+        const level = r < 0.25 ? 0 : r < 0.5 ? 1 : r < 0.72 ? 2 : r < 0.9 ? 3 : 4;
         // Approximate month for demo (cycles through months)
-        const month = Math.floor((weekIndex / 4.33)) % 12;
+        const month = Math.min(11, Math.floor(weekIndex / 4.4));
         week.push({ level, month });
       }
       weeks.push(week);
