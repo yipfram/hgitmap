@@ -4,6 +4,13 @@ import apiClient from '../api/client';
 import ActivityIcons from './ActivityIcons';
 import './ActivityTimeline.css';
 
+// Parse 'YYYY-MM-DD' as a local date (new Date(str) would be UTC and shift a day)
+const parseLocalDate = (dateStr) => {
+  const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(dateStr || '');
+  if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return new Date(dateStr);
+};
+
 function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = false }) {
   const { user } = useAuth();
   const [activities, setActivities] = useState([]);
@@ -95,10 +102,10 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
   };
 
   const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
+    const date = parseLocalDate(dateStr);
     const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.max(0, Math.round((today - date) / (1000 * 60 * 60 * 24)));
 
     if (diffDays === 0) return 'Today';
     if (diffDays === 1) return 'Yesterday';
@@ -124,12 +131,23 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
       }
       processedActivityIds.add(activity.id);
 
-      const date = new Date(activity.date);
+      const date = parseLocalDate(activity.date);
       const monthYear = `${date.toLocaleString('default', { month: 'long' })} ${date.getFullYear()}`;
 
       if (!groups[monthYear]) {
         console.log('📅 [groupActivitiesByMonth] Creating new month group:', monthYear);
         groups[monthYear] = [];
+      }
+
+      if (activity.activity_type === 'PrivateContribution') {
+        // Pages can split a month's private contributions; merge them per month
+        const existing = groups[monthYear].find(a => a.activity_type === 'PrivateContribution');
+        if (existing) {
+          existing.count += activity.count;
+          return;
+        }
+        groups[monthYear].push({ ...activity });
+        return;
       }
 
       groups[monthYear].push(activity);
@@ -155,7 +173,7 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
     }
 
     // Find actual date range from loaded activities
-    const activityDates = activities.map(a => new Date(a.date));
+    const activityDates = activities.map(a => parseLocalDate(a.date));
     const minDate = new Date(Math.min(...activityDates));
     const maxDate = new Date(Math.max(...activityDates));
 
@@ -245,13 +263,13 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
   };
 
   const renderActivity = (activity) => {
-    const metadata = activity.metadata;
+    const metadata = activity.metadata || {};
 
     switch (activity.activity_type) {
       case 'Commit': {
         const repos = metadata.repositories || [];
         const totalCommits = activity.count;
-        const maxCommits = Math.max(...repos.map(r => r.commit_count));
+        const maxCommits = Math.max(1, ...repos.map(r => r.commit_count));
 
         return (
           <div className="activity-item" key={activity.id}>
@@ -303,7 +321,7 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
                   )}
                 </div>
               </div>
-              <div className="activity-date">on {formatDate(activity.date)}</div>
+              <div className="activity-date">{formatDate(activity.date)}</div>
             </div>
           </div>
         );
@@ -314,7 +332,7 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
             <div className="activity-icon">{getActivityIcon(activity.activity_type)}</div>
             <div className="activity-content">
               <div className="activity-header">Joined the {activity.organization_name} organization</div>
-              <div className="activity-date">on {formatDate(activity.date)}</div>
+              <div className="activity-date">{formatDate(activity.date)}</div>
             </div>
           </div>
         );
@@ -367,6 +385,52 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
             </div>
           </div>
         );
+
+      case 'PrivateContribution': {
+        const n = activity.count || 1;
+        return (
+          <div className="activity-item" key={activity.id}>
+            <div className="activity-icon">{getActivityIcon(activity.activity_type)}</div>
+            <div className="activity-content">
+              <div className="activity-header">
+                Made {n} private contribution{n !== 1 ? 's' : ''}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      case 'Review':
+      case 'Fork':
+      case 'Release':
+      case 'Star': {
+        const verbs = {
+          Review: 'Reviewed a pull request in',
+          Fork: 'Forked',
+          Release: 'Released',
+          Star: 'Starred',
+        };
+        return (
+          <div className="activity-item" key={activity.id}>
+            <div className="activity-icon">{getActivityIcon(activity.activity_type)}</div>
+            <div className="activity-content">
+              <div className="activity-header-row">
+                <div className="activity-header">
+                  {verbs[activity.activity_type]}{' '}
+                  {activity.repository_name ? (
+                    <a href={getRepositoryUrl(activity, activity.repository_name)} target="_blank" rel="noopener noreferrer">
+                      {activity.repository_name}
+                    </a>
+                  ) : (
+                    <span>a repository</span>
+                  )}
+                </div>
+                <div className="activity-date">{formatDate(activity.date)}</div>
+              </div>
+            </div>
+          </div>
+        );
+      }
 
       default:
         return (
@@ -438,6 +502,11 @@ function ActivityTimeline({ platformFilter = 'all', username = null, isPublic = 
       </div>
 
       <div className="timeline-content">
+        {activities.length === 0 && (
+          <div className="empty-month-message">
+            <span>No activity to show</span>
+          </div>
+        )}
         {allMonths.map((month) => (
           <div key={month.key} className="month-group">
             <h3 className="month-header">{month.key}</h3>
