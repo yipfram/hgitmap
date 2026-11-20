@@ -200,14 +200,12 @@ function ThemeEditor() {
     setFormData(prev => ({ ...prev, theme_mode: mode, ...defaults }));
   };
 
-  const SLUG_RE = /^[a-z0-9]+(-[a-z0-9]+)*$/;
-
   const validate = () => {
     const errs = {};
     if (!formData.name.trim()) errs.name = 'Theme name is required';
     if (!formData.slug) errs.slug = 'Slug is required';
-    else if (!SLUG_RE.test(formData.slug)) {
-      errs.slug = 'Slug may only contain lowercase letters, digits and single hyphens (no leading/trailing hyphen)';
+    else if (!isValidSlug(formData.slug)) {
+      errs.slug = SLUG_HINT;
     }
     if (formData.output_formats.length === 0) errs.output_formats = 'Select at least one output format';
     return errs;
