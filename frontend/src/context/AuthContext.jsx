@@ -64,6 +64,15 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
+  // Used after an OIDC redirect: the backend hands us a ready-made JWT.
+  const loginWithToken = (data) => {
+    const u = { id: data.user_id, username: data.username, is_admin: data.is_admin };
+    localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(u));
+    setUser(u);
+    return u;
+  };
+
   const logout = () => {
     localStorage.removeItem('token');
     localStorage.removeItem('user');
@@ -71,7 +80,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout }}>
+    <AuthContext.Provider value={{ user, login, loginWithToken, register, logout }}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,11 +1,13 @@
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, Navigate } from 'react-router-dom';
+import useAuthConfig from '../hooks/useAuthConfig';
 import { useAuth } from '../context/AuthContext';
 import HeatmapLogo from '../components/HeatmapLogo';
 import ThemeToggle from '../components/ThemeToggle';
 import './Auth.css';
 
 const Register = () => {
+  const authConfig = useAuthConfig();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -39,6 +41,10 @@ const Register = () => {
       setLoading(false);
     }
   };
+
+  if (authConfig.loaded && !authConfig.password_login) {
+    return <Navigate to="/login" replace />;
+  }
 
   return (
     <div className="auth-container">

@@ -43,6 +43,11 @@ pub async fn register(
     if let Err(e) = crate::utils::rate_limit::check(&http_req, "register", 5, 3600) {
         return e.error_response();
     }
+    if !config.password_login_enabled {
+        return HttpResponse::Forbidden().json(ErrorResponse {
+            error: "Password registration is disabled, use single sign-on".to_string(),
+        });
+    }
     log::info!("📝 Registration attempt for username: {}", req.username);
 
     // Check if registration is allowed
@@ -104,7 +109,7 @@ pub async fn register(
     let new_user = user::ActiveModel {
         id: Set(user_id),
         username: Set(req.username.clone()),
-        password_hash: Set(password_hash),
+        password_hash: Set(Some(password_hash)),
         email: Set(req.email.clone()),
         is_admin: Set(is_first_user),
         created_at: Set(Utc::now()),
@@ -174,6 +179,11 @@ pub async fn login(
     if let Err(e) = crate::utils::rate_limit::check(&http_req, "login", 10, 300) {
         return e.error_response();
     }
+    if !config.password_login_enabled {
+        return HttpResponse::Forbidden().json(ErrorResponse {
+            error: "Password login is disabled, use single sign-on".to_string(),
+        });
+    }
     log::info!("🔐 Login attempt for username: {}", req.username);
 
     // Find user by username
@@ -187,7 +197,13 @@ pub async fn login(
             log::info!("👤 User '{}' found, verifying password...", req.username);
 
             // Verify password
-            match verify_password(&req.password, &user.password_hash) {
+            let Some(password_hash) = user.password_hash.as_deref() else {
+                // SSO-only account: no password to verify
+                return HttpResponse::Unauthorized().json(ErrorResponse {
+                    error: "Invalid credentials".to_string(),
+                });
+            };
+            match verify_password(&req.password, password_hash) {
                 Ok(true) => {
                     log::info!("✅ Password verified for user '{}'", req.username);
 

@@ -52,6 +52,10 @@ async fn main() -> std::io::Result<()> {
         .expect("Failed to connect to database");
     println!("✅ Connected!");
 
+    utils::db::ensure_oidc_schema(&db)
+        .await
+        .expect("Failed to apply OIDC schema upgrade");
+
     log::info!("Database connection established");
 
     // Start background job processor for heatmap generation
@@ -127,7 +131,10 @@ async fn main() -> std::io::Result<()> {
             .service(
                 web::scope("/auth")
                     .route("/register", web::post().to(handlers::auth::register))
-                    .route("/login", web::post().to(handlers::auth::login)),
+                    .route("/login", web::post().to(handlers::auth::login))
+                    .route("/config", web::get().to(handlers::oidc::auth_config))
+                    .route("/oidc/login", web::get().to(handlers::oidc::oidc_login))
+                    .route("/oidc/callback", web::get().to(handlers::oidc::oidc_callback)),
             )
             // OAuth endpoints (authorize requires JWT, callback uses state token)
             .service(

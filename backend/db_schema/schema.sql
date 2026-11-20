@@ -8,11 +8,27 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     username VARCHAR(255) UNIQUE NOT NULL,
-    password_hash VARCHAR(255) NOT NULL,
+    password_hash VARCHAR(255), -- NULL for SSO-only accounts
     email VARCHAR(255),
     is_admin BOOLEAN DEFAULT false,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+);
+
+-- OIDC identities (single sign-on, e.g. Pocket ID). Also created at startup if missing.
+CREATE TABLE IF NOT EXISTS user_identities (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    issuer VARCHAR(500) NOT NULL,
+    subject VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE (issuer, subject)
+);
+
+CREATE TABLE IF NOT EXISTS oidc_states (
+    state VARCHAR(128) PRIMARY KEY,
+    pkce_verifier VARCHAR(128) NOT NULL,
+    expires_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 -- Git platform type enum

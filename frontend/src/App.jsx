@@ -9,6 +9,7 @@ import SettingsLayout from './components/SettingsLayout';
 import UserSettings from './components/UserSettings';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import OidcCallback from './pages/OidcCallback';
 import Landing from './pages/Landing';
 import Profile from './pages/Profile';
 import PlatformManagement from './pages/PlatformManagement';
@@ -60,6 +61,7 @@ function App() {
                   <Routes>
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
+                    <Route path="/oidc/callback" element={<OidcCallback />} />
                     <Route path="/" element={<RootRedirect />} />
                     {/* Public profile route */}
                     <Route path="/:username" element={<Profile />} />

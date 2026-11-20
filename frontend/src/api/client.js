@@ -27,6 +27,18 @@ class ApiClient {
     return data;
   }
 
+  async getAuthConfig() {
+    const response = await fetch(`${API_BASE_URL}/auth/config`);
+    if (!response.ok) {
+      return { password_login: true, oidc_enabled: false, oidc_name: null };
+    }
+    return response.json();
+  }
+
+  oidcLoginUrl() {
+    return `${API_BASE_URL}/auth/oidc/login`;
+  }
+
   async login(username, password) {
     const response = await fetch(`${API_BASE_URL}/auth/login`, {
       method: 'POST',
