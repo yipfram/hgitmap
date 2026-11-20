@@ -179,7 +179,7 @@ CREATE TABLE user_settings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID UNIQUE NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     show_private_contributions BOOLEAN DEFAULT true,
-    hide_private_repo_names BOOLEAN DEFAULT false,
+    hide_private_repo_names BOOLEAN DEFAULT true,
     heatmap_color_scheme VARCHAR(50) DEFAULT 'green',
     heatmap_size VARCHAR(20) DEFAULT 'medium',
     dark_mode_enabled BOOLEAN DEFAULT false,
