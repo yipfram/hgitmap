@@ -4,9 +4,11 @@ import useAuthConfig from '../hooks/useAuthConfig';
 import { useAuth } from '../context/AuthContext';
 import HeatmapLogo from '../components/HeatmapLogo';
 import ThemeToggle from '../components/ThemeToggle';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 import './Auth.css';
 
 const Register = () => {
+  useDocumentTitle('Register');
   const authConfig = useAuthConfig();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -59,7 +61,7 @@ const Register = () => {
         <Link to="/" aria-label="Hgitmap home" style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
           <HeatmapLogo size={48} />
         </Link>
-        <h1>Register for hgitmap</h1>
+        <h1>Register for Hgitmap</h1>
         <form onSubmit={handleSubmit}>
           {error && <div className="error-message" role="alert">{error}</div>}
 

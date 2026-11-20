@@ -5,9 +5,11 @@ import useAuthConfig from '../hooks/useAuthConfig';
 import { useAuth } from '../context/AuthContext';
 import HeatmapLogo from '../components/HeatmapLogo';
 import ThemeToggle from '../components/ThemeToggle';
+import useDocumentTitle from '../hooks/useDocumentTitle';
 import './Auth.css';
 
 const Login = () => {
+  useDocumentTitle('Login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [searchParams] = useSearchParams();
