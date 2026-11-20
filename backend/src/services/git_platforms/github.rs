@@ -1750,7 +1750,7 @@ impl GitPlatform for GitHubClient {
                                     "https://github.com/{}",
                                     event.repo.name
                                 )),
-                                is_private: false, // GitHub events API doesn't expose privacy
+                                is_private: event.public == Some(false),
                                 count: 1,
                                 primary_language,
                                 organization_name: None,
@@ -1777,7 +1777,7 @@ impl GitPlatform for GitHubClient {
                                     "https://github.com/{}",
                                     event.repo.name
                                 )),
-                                is_private: false,
+                                is_private: event.public == Some(false),
                                 count: 1,
                                 primary_language: None,
                                 organization_name: None,
@@ -1804,7 +1804,7 @@ impl GitPlatform for GitHubClient {
                                     "https://github.com/{}",
                                     event.repo.name
                                 )),
-                                is_private: false,
+                                is_private: event.public == Some(false),
                                 count: 1,
                                 primary_language: None,
                                 organization_name: None,
@@ -1822,7 +1822,7 @@ impl GitPlatform for GitHubClient {
                         }),
                         repository_name: Some(event.repo.name.clone()),
                         repository_url: Some(format!("https://github.com/{}", event.repo.name)),
-                        is_private: false,
+                        is_private: event.public == Some(false),
                         count: 1,
                         primary_language: None,
                         organization_name: None,
@@ -1842,7 +1842,7 @@ impl GitPlatform for GitHubClient {
                             }),
                             repository_name: None,
                             repository_url: None,
-                            is_private: false,
+                            is_private: event.public == Some(false),
                             count: 1,
                             primary_language: None,
                             organization_name: Some(org.login.clone()),
@@ -1894,7 +1894,7 @@ impl GitPlatform for GitHubClient {
                 }),
                 repository_name: Some(repo_name.clone()),
                 repository_url: Some(format!("https://github.com/{}", repo_name)),
-                is_private: false,
+                is_private: events.iter().any(|e| e.public == Some(false)),
                 count: total_commits,
                 primary_language: None,
                 organization_name: None,
@@ -2067,6 +2067,8 @@ struct GitHubEvent {
     repo: GitHubEventRepo,
     payload: Option<serde_json::Value>, // Use raw JSON to see all fields
     org: Option<GitHubEventOrg>,
+    /// `false` for events on private repositories (absent means public)
+    public: Option<bool>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
