@@ -48,9 +48,18 @@ const UserProfile = ({ username = null, isPublic = false }) => {
     }
   }, [username, isPublic]);
 
-  // Generate fallback avatar URL (using UI Avatars service)
-  const getFallbackAvatarUrl = (username) => {
-    return `https://ui-avatars.com/api/?name=${encodeURIComponent(username)}&size=260&background=random&bold=true`;
+  // Local fallback avatar: initial on a coloured circle (no external request)
+  const getFallbackAvatarUrl = (name) => {
+    const label = name || '?';
+    let hash = 0;
+    for (const ch of label) hash = (hash * 31 + ch.charCodeAt(0)) >>> 0;
+    const initial = (Array.from(label)[0] || '?').toUpperCase().replace(/[<>&"']/g, '?');
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="260" height="260" viewBox="0 0 260 260">' +
+      `<rect width="260" height="260" fill="hsl(${hash % 360}, 55%, 42%)"/>` +
+      '<text x="130" y="130" fill="#fff" font-family="sans-serif" font-size="120" font-weight="700" ' +
+      `text-anchor="middle" dominant-baseline="central">${initial}</text></svg>`;
+    return `data:image/svg+xml;utf8,${encodeURIComponent(svg)}`;
   };
 
   // Get platform name
@@ -98,11 +107,13 @@ const UserProfile = ({ username = null, isPublic = false }) => {
       {platforms && platforms.length > 0 && (
         <div className="platform-profiles">
           {/* Platform Tabs */}
-          <div className="platform-tabs">
+          <div className="platform-tabs" role="tablist" aria-label="Platforms">
             {platforms.map((platform, index) => (
               <button
                 key={platform.id}
                 className={`platform-tab ${selectedPlatform === index ? 'active' : ''}`}
+                role="tab"
+                aria-selected={selectedPlatform === index}
                 onClick={() => setSelectedPlatform(index)}
               >
                 <PlatformIcon platform={platform.platform} size={16} />
@@ -112,13 +123,14 @@ const UserProfile = ({ username = null, isPublic = false }) => {
           </div>
 
           {/* Selected Platform Profile */}
-          <div className="platform-profile-card">
+          <div className="platform-profile-card" role="tabpanel">
             <div className="platform-avatar">
               <img
                 src={platforms[selectedPlatform].avatar_url || getFallbackAvatarUrl(platforms[selectedPlatform].platform_username)}
                 alt={platforms[selectedPlatform].platform_username}
                 className="platform-avatar-img"
                 onError={(e) => {
+                  e.target.onerror = null;
                   e.target.src = getFallbackAvatarUrl(platforms[selectedPlatform].platform_username);
                 }}
               />
