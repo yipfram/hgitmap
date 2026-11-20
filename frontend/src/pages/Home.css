@@ -175,7 +175,11 @@
   }
 
   .welcome-text {
-    display: none;
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .tabs {
@@ -195,7 +199,7 @@
   }
 
   .user-info {
-    gap: 8px;
+    gap: 6px;
   }
 
   .settings-btn,

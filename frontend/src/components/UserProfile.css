@@ -279,7 +279,12 @@
   .platform-tabs {
     gap: 4px;
     overflow-x: auto;
-    scrollbar-width: thin;
+    overflow-y: hidden;
+    scrollbar-width: none;
+  }
+
+  .platform-tabs::-webkit-scrollbar {
+    display: none;
   }
 
   .platform-tab {
