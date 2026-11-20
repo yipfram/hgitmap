@@ -86,6 +86,8 @@ pub async fn list_oauth_apps(
     require_admin(db.as_ref(), user_id).await?;
 
     let apps = oauth_application::Entity::find()
+        .order_by_asc(oauth_application::Column::CreatedAt)
+        .order_by_asc(oauth_application::Column::Id)
         .all(db.as_ref())
         .await
         .map_err(|e| {
@@ -155,7 +157,23 @@ pub async fn create_oauth_app(
     };
 
     // Normalize instance URL
-    let instance_url = payload.instance_url.clone().unwrap_or_default();
+    let instance_url = payload
+        .instance_url
+        .clone()
+        .unwrap_or_default()
+        .trim()
+        .trim_end_matches('/')
+        .to_string();
+    if platform != git_platform_account::GitPlatform::GitHub && instance_url.is_empty() {
+        return Ok(HttpResponse::BadRequest().json(ErrorResponse {
+            error: "Instance URL is required for GitLab and Gitea".to_string(),
+        }));
+    }
+    if payload.instance_name.trim().is_empty() {
+        return Ok(HttpResponse::BadRequest().json(ErrorResponse {
+            error: "Instance name cannot be empty".to_string(),
+        }));
+    }
     log::info!("Instance URL: '{}'", instance_url);
 
     // Check if OAuth app already exists for this platform + instance
@@ -207,7 +225,7 @@ pub async fn create_oauth_app(
         id: Set(Uuid::new_v4()),
         platform: Set(platform),
         instance_url: Set(instance_url),
-        instance_name: Set(payload.instance_name.clone()),
+        instance_name: Set(payload.instance_name.trim().to_string()),
         client_id: Set(payload.client_id.clone()),
         client_secret: Set(encrypted_secret),
         is_enabled: Set(true),
@@ -277,7 +295,12 @@ pub async fn update_oauth_app(
     let mut app: oauth_application::ActiveModel = app.into();
 
     if let Some(instance_name) = &payload.instance_name {
-        app.instance_name = Set(instance_name.clone());
+        if instance_name.trim().is_empty() {
+            return Ok(HttpResponse::BadRequest().json(ErrorResponse {
+                error: "Instance name cannot be empty".to_string(),
+            }));
+        }
+        app.instance_name = Set(instance_name.trim().to_string());
     }
 
     if let Some(client_id) = &payload.client_id {
