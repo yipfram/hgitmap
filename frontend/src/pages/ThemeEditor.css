@@ -300,3 +300,50 @@ transition: all 0.2s;
 .theme-form .checkbox-option span {
   flex: 0 1 auto;
 }
+
+.editor-header h1 {
+  color: var(--text-primary);
+}
+
+/* Header cancel must read as secondary, whatever other pages define for .btn-secondary */
+.theme-editor-container .btn-secondary {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 0.6rem 1.25rem;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.theme-editor-container .btn-secondary:hover {
+  background: var(--bg-tertiary);
+}
+
+/* Colour swatches: global input padding collapsed them into thin lines */
+.theme-form .color-input input[type="color"],
+.theme-form .color-input-group input[type="color"] {
+  flex: none;
+  width: 48px;
+  height: 40px;
+  min-width: 48px;
+  padding: 3px;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  cursor: pointer;
+}
+
+.theme-form input[type="color"]::-webkit-color-swatch-wrapper {
+  padding: 0;
+}
+
+.theme-form input[type="color"]::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+
+.theme-form input[type="color"]::-moz-color-swatch {
+  border: none;
+  border-radius: 3px;
+}

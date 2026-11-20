@@ -14,6 +14,7 @@
 .themes-header h1 {
   margin: 0;
   font-size: 2rem;
+  color: var(--text-primary);
 }
 
 .header-actions {
@@ -195,6 +196,21 @@
 .btn-danger {
   color: #dc3545;
   border-color: #dc3545;
+  /* push the destructive action away from the others */
+  margin-left: auto;
+}
+
+.theme-actions .btn-danger {
+  position: relative;
+}
+
+.theme-actions .btn-danger::before {
+  content: '';
+  position: absolute;
+  left: -0.6rem;
+  top: 4px;
+  bottom: 4px;
+  border-left: 1px solid var(--border-color);
 }
 
 .btn-danger:hover {
@@ -231,9 +247,12 @@
   background: var(--background-secondary);
   padding: 0.5rem;
   border-radius: 4px;
-  font-size: 0.85rem;
-  word-break: break-all;
-  overflow-wrap: break-word;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 0.8rem;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .btn-copy {

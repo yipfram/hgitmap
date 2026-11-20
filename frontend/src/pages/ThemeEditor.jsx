@@ -45,7 +45,7 @@ function ThemeEditor() {
     heatmap_height: null,
     padding_top: 20,
     padding_right: 20,
-    padding_bottom: 17,
+    padding_bottom: 20,
     padding_left: 20,
 
     // Layout spacing
@@ -226,7 +226,7 @@ function ThemeEditor() {
     <div className="theme-editor-container">
       <div className="editor-header">
         <h1>{isEditing ? 'Edit Theme' : 'Create New Theme'}</h1>
-        <button className="btn-secondary" onClick={() => navigate('/heatmap/themes')}>
+        <button type="button" className="btn-secondary" onClick={() => navigate('/settings/themes')}>
           Cancel
         </button>
       </div>
@@ -734,7 +734,7 @@ function ThemeEditor() {
           <button
             type="button"
             className="btn-secondary"
-            onClick={() => navigate('/heatmap/themes')}
+            onClick={() => navigate('/settings/themes')}
           >
             Cancel
           </button>

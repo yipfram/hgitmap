@@ -49,17 +49,24 @@ function ColorSchemePicker({ value, onChange, customColors }) {
   };
 
   return (
-    <div className="color-scheme-picker">
+    <div className="color-scheme-picker" role="radiogroup" aria-label="Color scheme">
       {Object.entries(COLOR_SCHEMES).map(([key, scheme]) => {
         const isSelected = value === key;
         const displayColors = key === 'custom' && customColors ? customColors : scheme.colors;
 
         return (
-          <div
+          <label
             key={key}
             className={`scheme-option ${isSelected ? 'selected' : ''}`}
-            onClick={() => handleSchemeClick(key)}
           >
+            <input
+              type="radio"
+              name="color-scheme"
+              className="scheme-radio"
+              value={key}
+              checked={isSelected}
+              onChange={() => handleSchemeClick(key)}
+            />
             <div className="scheme-preview">
               {displayColors.map((color, i) => (
                 <div
@@ -72,9 +79,9 @@ function ColorSchemePicker({ value, onChange, customColors }) {
             </div>
             <div className="scheme-label">
               {scheme.label}
-              {isSelected && <span className="checkmark">✓</span>}
+              {isSelected && <span className="checkmark" aria-hidden="true">✓</span>}
             </div>
-          </div>
+          </label>
         );
       })}
     </div>

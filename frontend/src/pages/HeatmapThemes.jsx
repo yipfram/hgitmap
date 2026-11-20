@@ -255,7 +255,7 @@ function HeatmapThemes() {
                 <h4>Embed URLs:</h4>
                 {theme.output_formats.map(format => (
                   <div key={format} className="embed-url-row">
-                    <code>{getEmbedUrl(theme.slug, format)}</code>
+                    <code title={getEmbedUrl(theme.slug, format)}>{getEmbedUrl(theme.slug, format)}</code>
                     <button
                       className="btn-copy"
                       onClick={() => {
@@ -264,6 +264,7 @@ function HeatmapThemes() {
                           .catch(() => toast.error('Could not copy to clipboard'));
                       }}
                       title="Copy to clipboard"
+                      aria-label={`Copy ${format.toUpperCase()} embed URL`}
                     >
                       <FiCopy />
                     </button>
